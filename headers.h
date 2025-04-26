@@ -85,7 +85,7 @@ typedef struct
     processNode *backptr;
 } AllProcessesQueue;
 
-struct ProcessNode *create_process(int id, int arrival, int runtime, int priority)
+processNode *create_process(int id, int arrival, int runtime, int priority)
 {
     processNode *p = malloc(sizeof(processNode));
     if (!p)
@@ -146,4 +146,37 @@ void ClearQueue(AllProcessesQueue *q)
     }
     q->frontptr = NULL;
     q->backptr = NULL;
+}
+
+
+enum schedulealgo {
+    HPF = 0,
+    SRTN = 1,
+    RR = 2
+};
+
+enum pstatus {
+    RUNNING = 0,
+    WAITING = 1
+};
+
+typedef struct {
+    processNode* process;
+    enum pstatus status;
+    int arrivalTime;
+    int executionTime;
+    int remainingTime;
+    int waitingTime;
+    int priority;
+} pcb;
+
+pcb* pcb_init(processNode* processPtr, int pri){
+    pcb* pcbobj;
+    pcbobj->process = processPtr;
+    pcbobj->arrivalTime = 0;
+    pcbobj->executionTime = 0;
+    pcbobj->remainingTime = 0;
+    pcbobj->waitingTime = 0;
+    pcbobj->priority = pri;
+    return pcbobj;
 }
