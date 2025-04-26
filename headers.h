@@ -180,3 +180,72 @@ pcb* pcb_init(processNode* processPtr, int pri){
     pcbobj->priority = pri;
     return pcbobj;
 }
+//note it need a lot of improvments I know it is not right I am making the first version of the code and I will improve it later
+// Define the maximum size of the queue
+#define CirQ_SIZE 1000
+
+typedef struct {
+pcb *queue[CirQ_SIZE];
+int front ;
+int rear ;
+} CircularQueue;
+
+// Function to check if the queue is full
+int isFullCir(CircularQueue* q)
+{
+    // If the next position is the front, the queue is full
+    return (q->rear + 1) % CirQ_SIZE == q->front;
+}
+
+// Function to check if the queue is empty
+int isEmptyCir(CircularQueue* q)
+{
+    // If the front hasn't been set, the queue is empty
+    return q->front == -1;
+}
+
+// Function to enqueue (insert) an element
+void enqueueCir(CircularQueue* q, pcb *data)
+{
+    // If the queue is full, print an error message and
+    // return
+    if (isFullCir(q)) {
+        printf("Queue overflow\n");
+        return;
+    }
+    // If the queue is empty, set the front to the first
+    // position
+    if (q->front == -1) {
+        q->front = 0;
+    }
+    // Add the data to the queue and move the rear pointer
+    q->rear = (q->rear + 1) % CirQ_SIZE;
+    q->queue[q->rear] = data;
+    //printf("Element %d inserted\n", data.process->processID);
+}
+
+
+// Function to dequeue (remove) an element
+pcb *dequeueCir(CircularQueue* q)
+{
+    // If the queue is empty, print an error message and
+    // return -1
+    if (isEmptyCir(q)) {
+        printf("Queue underflow\n");
+        return NULL;
+    }
+    // Get the data from the front of the queue
+    pcb *data = q->queue[q->front];
+    // If the front and rear pointers are at the same
+    // position, reset them
+    if (q->front == q->rear) {
+        q->front = q->rear = -1;
+    }
+    else {
+        // Otherwise, move the front pointer to the next
+        // position
+        q->front = (q->front + 1) % CirQ_SIZE;
+    }
+    // Return the dequeued data
+    return data;
+}
