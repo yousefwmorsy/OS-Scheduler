@@ -7,6 +7,30 @@ bool checkifEnd(int msg_q){
     }
     return false;
 }
+void checkforNewProcesses(int msg_q){
+    ProcessMsg msg;
+    while(msgrcv(msg_q, &msg, sizeof(ProcessMsg), 1, IPC_NOWAIT)){ //wait for msg of type 1 (process)
+        int pid = fork();
+        if(pid==-1){
+            perror("Process fork failed\n");
+            return ;
+        }
+        else if(pid == 0){
+            execl("Compiled/process.out","./Compiled/process.out", (char*)NULL);
+            perror("Process execl failed\n");
+            return;
+        }
+        else {
+            pcb *obj = malloc(sizeof(pcb)); 
+            if (obj == NULL) {
+                perror("Memory allocation for PCB failed\n");
+                return;
+            }
+            *obj = pcb_init(&msg, pid); // Initialize the PCB
+
+        }
+    }
+}
 void roundRobin(int quantum,int numProc, pcb *process[]) //assuming I am going to get a array of processes this assumption might not be true 
 {
     initClk();
@@ -64,10 +88,11 @@ void roundRobin(int quantum,int numProc, pcb *process[]) //assuming I am going t
 }
 int main(int argc, char *argv[])
 {
-    initClk();
+    initClk();  
     // TODO implement the scheduler :)
     // upon termination release the clock resources.
     printf("Scheduler starting\n");
+    
     enum schedulealgo algo = atoi(argv[1]);
     int quantum = atoi(argv[2]);
     int MessageQueueId = msgget(MSG_KEY, IPC_CREAT | 0666);

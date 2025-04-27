@@ -161,7 +161,7 @@ enum pstatus {
 };
 
 typedef struct {
-    processNode* process;
+    //processNode* process;
     enum pstatus status;
     int givenid;
     pid_t sysstemid;
@@ -172,16 +172,29 @@ typedef struct {
     int priority;
 } pcb;
 
-pcb* pcb_init(processNode* processPtr){
-    pcb* pcbobj;
-    pcbobj->givenid = processPtr->processID;
-    pcbobj->sysstemid = fork(); //creates process
-    pcbobj->process = processPtr;
-    pcbobj->arrivalTime = processPtr->arrivalTime;
-    pcbobj->executionTime = 0;
-    pcbobj->remainingTime = processPtr->runTime;
-    pcbobj->waitingTime = 0;
-    pcbobj->priority = processPtr->priority;
+// pcb* pcb_init(processNode* processPtr, int sysid){
+//     pcb* pcbobj;
+//     pcbobj->givenid = processPtr->processID;
+//     pcbobj->sysstemid = sysid; //creates process
+//     //pcbobj->process = processPtr;
+//     pcbobj->arrivalTime = processPtr->arrivalTime;
+//     pcbobj->executionTime = 0;
+//     pcbobj->remainingTime = processPtr->runTime;
+//     pcbobj->waitingTime = 0;
+//     pcbobj->priority = processPtr->priority;
+//     return pcbobj;
+// };
+
+pcb pcb_init(ProcessMsg* processmsg, int sysid){
+    pcb pcbobj;
+    pcbobj.givenid = processmsg->id;
+    pcbobj.sysstemid = -1;
+    //pcbobj->process = 
+    pcbobj.arrivalTime = processmsg->arrivalTime;
+    pcbobj.executionTime = 0; 
+    pcbobj.remainingTime = processmsg->runTime;
+    pcbobj.waitingTime = 0;
+    pcbobj.priority = processmsg->priority;
     return pcbobj;
 };
 //note it need a lot of improvments I know it is not right I am making the first version of the code and I will improve it later
