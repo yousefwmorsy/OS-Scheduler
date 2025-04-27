@@ -68,14 +68,14 @@ void roundRobin(int quantum,int numProc, pcb *process[],FILE *fp) //assuming I a
         if(pcbtemp->waitingTime == 0 && pcbtemp->process->runTime == pcbtemp->remainingTime) //I think that execution time is the time need for it to finish from the start not sure
         {
             pcbtemp->waitingTime = currentTime - pcbtemp->arrivalTime; // Waiting time of the process
-            schedulerlogPrint(fp, currentTime, pcbtemp->process->processID, "started", pcbtemp->arrivalTime, pcbtemp->executionTime,pcbtemp->remainingTime, pcbtemp->waitingTime, false); 
+            schedulerlogPrint(fp, currentTime, pcbtemp->process->processID, "started", pcbtemp->arrivalTime, pcbtemp->process->runTime,pcbtemp->remainingTime, pcbtemp->waitingTime, false); 
             WT[indexGlobal2] = pcbtemp->waitingTime;
         }
         
         else
 
         {
-            schedulerlogPrint(fp, currentTime, pcbtemp->process->processID, "resumed", pcbtemp->arrivalTime, pcbtemp->executionTime,pcbtemp->remainingTime, pcbtemp->waitingTime, false);
+            schedulerlogPrint(fp, currentTime, pcbtemp->process->processID, "resumed", pcbtemp->arrivalTime, pcbtemp->process->runTime,pcbtemp->remainingTime, pcbtemp->waitingTime, false);
         }
         
             if (pcbtemp->remainingTime > quantum)
@@ -83,13 +83,13 @@ void roundRobin(int quantum,int numProc, pcb *process[],FILE *fp) //assuming I a
                 pcbtemp->remainingTime -= quantum;
                 while(currentTime + quantum > getClk()){}
                 enqueueCir(queue, pcbtemp);
-                schedulerlogPrint(fp, currentTime + quantum, pcbtemp->process->processID, "stopped", pcbtemp->arrivalTime, pcbtemp->executionTime,pcbtemp->remainingTime, pcbtemp->waitingTime, false); 
+                schedulerlogPrint(fp, currentTime + quantum, pcbtemp->process->processID, "stopped", pcbtemp->arrivalTime, pcbtemp->process->runTime,pcbtemp->remainingTime, pcbtemp->waitingTime, false); 
             }
             else
             {
                 int finishTime = currentTime + pcbtemp->remainingTime; // End time of the process
                 pcbtemp->remainingTime = 0;
-                schedulerlogPrint(fp, currentTime + quantum, pcbtemp->process->processID, "finished", pcbtemp->arrivalTime, pcbtemp->executionTime,pcbtemp->remainingTime, pcbtemp->waitingTime, true);
+                schedulerlogPrint(fp, currentTime + quantum, pcbtemp->process->processID, "finished", pcbtemp->arrivalTime, pcbtemp->process->runTime,pcbtemp->remainingTime, pcbtemp->waitingTime, true);
                 countDone++;
             }
 
