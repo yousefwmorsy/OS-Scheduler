@@ -163,6 +163,8 @@ enum pstatus {
 typedef struct {
     processNode* process;
     enum pstatus status;
+    int givenid;
+    pid_t sysstemid;
     int arrivalTime;
     int executionTime;
     int remainingTime;
@@ -170,16 +172,18 @@ typedef struct {
     int priority;
 } pcb;
 
-pcb* pcb_init(processNode* processPtr, int pri){
+pcb* pcb_init(processNode* processPtr){
     pcb* pcbobj;
+    pcbobj->givenid = processPtr->processID;
+    pcbobj->sysstemid = fork(); //creates process
     pcbobj->process = processPtr;
-    pcbobj->arrivalTime = 0;
+    pcbobj->arrivalTime = processPtr->arrivalTime;
     pcbobj->executionTime = 0;
-    pcbobj->remainingTime = 0;
+    pcbobj->remainingTime = processPtr->runTime;
     pcbobj->waitingTime = 0;
-    pcbobj->priority = pri;
+    pcbobj->priority = processPtr->priority;
     return pcbobj;
-}
+};
 //note it need a lot of improvments I know it is not right I am making the first version of the code and I will improve it later
 // Define the maximum size of the queue
 #define CirQ_SIZE 1000

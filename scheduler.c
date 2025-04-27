@@ -57,16 +57,33 @@ void roundRobin(int quantum,int numProc, pcb *process[]) //assuming I am going t
 }
 int main(int argc, char *argv[])
 {
-    // initClk();
+    initClk();
     // TODO implement the scheduler :)
     // upon termination release the clock resources.
     printf("Scheduler starting\n");
-    enum schedulealgo algo = argv[1];
-    int quantum = argv[2];
+    enum schedulealgo algo = atoi(argv[1]);
+    int quantum = atoi(argv[2]);
     int MessageQueueId = msgget(MSG_KEY, IPC_CREAT | 0666);
     ProcessMsg msg;
+    while(1){ //to be changed to something that indicates that the readyqueue is not empty (not all processes terminated)
+        if(!checkifEnd()){ //checks for ending msg from generator indicating no more processes
+            checkforNewProcesses(); //checks for new processes sent by gen and adds them to ready queue
+        }
 
+        //run the algorithms
+        switch (algo){
+            case HPF:
 
-    // destroyClk(true);
+                break;
+            case SRTN:
+
+                break;
+            case RR:
+
+                break;
+        }
+    }
+
+    destroyClk(true);
     exit(0);
 }
