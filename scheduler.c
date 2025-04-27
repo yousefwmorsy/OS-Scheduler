@@ -1,5 +1,12 @@
 #include "headers.h"
 #define CirQ_SIZE 100
+bool checkifEnd(int msg_q){
+    ProcessMsg msg;
+    if(msgrcv(msg_q, &msg, sizeof(ProcessMsg), 2, IPC_NOWAIT)){ //wait for msg of type 2
+        return true;
+    }
+    return false;
+}
 void roundRobin(int quantum,int numProc, pcb *process[]) //assuming I am going to get a array of processes this assumption might not be true 
 {
     initClk();
@@ -64,10 +71,9 @@ int main(int argc, char *argv[])
     enum schedulealgo algo = atoi(argv[1]);
     int quantum = atoi(argv[2]);
     int MessageQueueId = msgget(MSG_KEY, IPC_CREAT | 0666);
-    ProcessMsg msg;
     while(1){ //to be changed to something that indicates that the readyqueue is not empty (not all processes terminated)
-        if(!checkifEnd()){ //checks for ending msg from generator indicating no more processes
-            checkforNewProcesses(); //checks for new processes sent by gen and adds them to ready queue
+        if(!checkifEnd(MessageQueueId)){ //checks for ending msg from generator indicating no more processes
+            checkforNewProcesses(MessageQueueId); //checks for new processes sent by gen and adds them to ready queue
         }
 
         //run the algorithms
