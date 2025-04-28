@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <math.h>
+#include <string.h>
 
 typedef short bool;
 #define true 1
@@ -189,12 +190,12 @@ typedef struct {
 pcb pcb_init(ProcessMsg* processmsg, int sysid){
     pcb pcbobj;
     pcbobj.givenid = processmsg->id;
-    pcbobj.sysstemid = -1;
-    //pcbobj->process = 
+    pcbobj.sysstemid = sysid; // Set to the forked process ID
+
     pcbobj.arrivalTime = processmsg->arrivalTime;
     pcbobj.executionTime = 0; 
     pcbobj.remainingTime = processmsg->runTime;
-    pcbobj.waitingTime = 0;
+    pcbobj.waitingTime = -1; // Initialize to -1 to indicate not started
     pcbobj.priority = processmsg->priority;
     return pcbobj;
 };
@@ -312,4 +313,107 @@ pcb* PriQueue_peek(PriQueue *pq) {
         return NULL;
     }
     return pq->Process[0];
+}
+
+typedef struct PCBNode {
+    pcb PCB;
+    struct PCBNode* next;
+} PCBNode;
+
+typedef struct {
+    PCBNode* head;
+} PCBPriQ;
+
+// Initialize the priority queue
+PCBPriQ* PCBPriQ_init() {
+    PCBPriQ* queue = malloc(sizeof(PCBPriQ));
+    if (!queue) {
+        printf("Memory allocation failed\n");
+        exit(1);
+    }
+    queue->head = NULL;
+    return queue;
+}
+
+// Insert a PCB into the priority queue
+void PCBPriQ_enqueue(PCBPriQ* queue, pcb* newPCB) {
+    PCBNode* newNode = malloc(sizeof(PCBNode));
+    if (!newNode) {
+        printf("Memory allocation failed\n");
+        exit(1);
+    }
+    newNode->PCB = *newPCB;
+    newNode->next = NULL;
+
+    // If the queue is empty, just add the new PCB
+    if (queue->head == NULL) {
+        queue->head = newNode;
+        return;
+    }
+    
+    // If the head process is RUNNING, we must not insert before it
+    if (queue->head->PCB.status == RUNNING) {
+        // Insert after head, even if new process has higher priority
+        if (queue->head->next == NULL) {
+            // If head is the only element
+            queue->head->next = newNode;
+        } else {
+            // Find appropriate position after head based on priority
+            PCBNode* current = queue->head;
+            while (current->next != NULL && current->next->PCB.priority <= newPCB->priority) {
+                current = current->next;
+            }
+            newNode->next = current->next;
+            current->next = newNode;
+        }
+    }
+    // If head is not RUNNING, use normal priority-based insertion
+    else if (newPCB->priority < queue->head->PCB.priority) {
+        // New PCB has higher priority than head
+        newNode->next = queue->head;
+        queue->head = newNode;
+    }
+    else {
+        // Traverse the list to find correct position based on priority
+        PCBNode* current = queue->head;
+        while (current->next != NULL && current->next->PCB.priority <= newPCB->priority) {
+            current = current->next;
+        }
+        newNode->next = current->next;
+        current->next = newNode;
+    }
+}
+// Remove the highest priority PCB from the queue
+pcb PCBPriQ_dequeue(PCBPriQ* queue) {
+    if (queue->head == NULL) {
+        fprintf(stderr, "Queue underflow\n");
+        exit(1);
+    }
+    PCBNode* temp = queue->head;
+    pcb highestPriorityPCB = temp->PCB;
+    queue->head = queue->head->next;
+    free(temp);
+    return highestPriorityPCB;
+}
+
+// Peek at the highest priority PCB without removing it
+pcb* PCBPriQ_peek(PCBPriQ* queue) {
+    if (queue->head == NULL) {
+        return NULL; // Queue is empty
+    }
+    return &queue->head->PCB;
+
+}
+
+// Check if the priority queue is empty
+int PCBPriQ_isEmpty(PCBPriQ* queue) {
+    return queue->head == NULL;
+}
+
+// Clear the priority queue
+void PCBPriQ_clear(PCBPriQ* queue) {
+    while (!PCBPriQ_isEmpty(queue)) {
+        PCBPriQ_dequeue(queue);
+    }
+    free(queue);
 }
