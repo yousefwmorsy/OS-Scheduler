@@ -6,6 +6,7 @@
  */
 
 #include "headers.h"
+
 int shmid;
 
 /* Clear the resources before exit */

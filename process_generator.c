@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <string.h>
 
 #define MAX_LINE_LENGTH 256
 typedef struct
@@ -145,7 +146,7 @@ int main(int argc, char *argv[])
         msg.arrivalTime = Curr->arrivalTime;
         msg.runTime = Curr->runTime;
         msg.priority = Curr->priority;
-        if (msgsnd(MessageQueueId, &msg, sizeof(ProcessMsg), 0) == -1)
+        if (msgsnd(MessageQueueId, &msg, sizeof(ProcessMsg) - sizeof(long), 0) == -1)
         {
             printf("msgsnd failed");
             exit(1);
@@ -155,7 +156,7 @@ int main(int argc, char *argv[])
     // Send a message to indicate that all processes have been sent to the scheduler
     ProcessMsg msg;
     msg.mtype = 2;
-    msgsnd(MessageQueueId, &msg, sizeof(ProcessMsg), 0) ;
+    msgsnd(MessageQueueId, &msg, sizeof(ProcessMsg) - sizeof(long), 0) ;
     
     printf("All processes sent to the scheduler\n");
 
