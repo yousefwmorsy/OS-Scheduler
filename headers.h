@@ -249,7 +249,7 @@ pcb *dequeueCir(CircularQueue* q)
     // If the queue is empty, print an error message and
     // return -1
     if (isEmptyCir(q)) {
-        printf("Queue underflow\n");
+        // printf("Queue underflow\n"); //for now leave it like this
         return NULL;
     }
     // Get the data from the front of the queue
