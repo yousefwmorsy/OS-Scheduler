@@ -124,7 +124,7 @@ void checkforNewProcesses(int msg_q, int algo){
     }
 }
 
-void SRTN (int num_process, pcb *process[]){
+void SRTN_func (int num_process, pcb *process[]){
     PriQueue *PriQueue_obj;
     PriQueue_obj->size = 0;
     int completed = 0;
