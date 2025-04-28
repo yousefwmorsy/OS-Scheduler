@@ -41,8 +41,8 @@ void schedulerlogPrint (FILE *fp, int currentTime,pcb *pcb, char status [])
         int turnaroundTime = currentTime - arrivalTime;
         float weightedTA = (float)turnaroundTime / totalTime;
         WTA+= weightedTA;
-        fprintf(fp, "At time  %d process %d %s arr %d total %d remain %d wait %d TA %d WTA %f\n", currentTime , processID ,status ,arrivalTime ,totalTime , remainingTime , waitingTime , turnaroundTime ,weightedTA );
-        printf("At time  %d process %d %s arr %d total %d remain %d wait %d TA %d WTA %f\n", currentTime , processID ,status ,arrivalTime ,totalTime , remainingTime , waitingTime , turnaroundTime ,weightedTA );
+        fprintf(fp, "At time  %d process %d %s arr %d total %d remain %d wait %d TA %d WTA %.2f\n", currentTime , processID ,status ,arrivalTime ,totalTime , remainingTime , waitingTime , turnaroundTime ,weightedTA );
+        printf("At time  %d process %d %s arr %d total %d remain %d wait %d TA %d WTA %.2f\n", currentTime , processID ,status ,arrivalTime ,totalTime , remainingTime , waitingTime , turnaroundTime ,weightedTA );
     }
     else
     {
