@@ -28,11 +28,15 @@ int main(int argc, char *argv[])
         printf("Error opening file");
     }
 
+    //dynamic allocation of the queue
     queue = malloc(sizeof(AllProcessesQueue));
+
+
     char line[MAX_LINE_LENGTH];
     queue->frontptr = NULL;
     queue->backptr = NULL;
 
+    //reads the file line by line and creates a process node for each line and enqueues it to the queue
     while (fgets(line, sizeof(line), inputfile))
     {
 
@@ -76,7 +80,7 @@ int main(int argc, char *argv[])
     int clock = fork();
     if (clock == 0)
     {
-        execl("./clk", "./clk", NULL);
+        execl("./Compiled/clk.out", "./Compiled/clk.out", NULL);
         perror("clock execl failed\n");
     };
 
@@ -87,20 +91,21 @@ int main(int argc, char *argv[])
     }
     else if (scheduler == 0)
     {
-
-        // char q[5]; // assuming Quantum is maximum 4 digit (second char is for null terminator)
-        // execl("./shed", algo, timeQuantum, NULL);
-        execl("./shed", "./shed", algo, timeQuantum, NULL);
+        execl("./Compiled/scheduler.out", "./Compiled/scheduler.out", algo, timeQuantum, NULL);
 
         printf("scheduler execl failed\n");
     }
     // 4. Use this function after creating the clock process to initialize clock
     initClk();
+
+
     // To get time use this
     int x = getClk();
     //  printf("current time is %d\n", x);
     printf("current time is %d\n", x);
     // TODO Generation Main Loop
+
+    
     // 5. Create a data structure for processes and provide it with its parameters.
     // created the queue in step 1
 
@@ -114,8 +119,10 @@ int main(int argc, char *argv[])
     SentQueue->backptr = NULL;
     while (!isEmpty(queue))
     {
-        int x = getClk();
-        printf("current time is %d\n", x);
+        //for debugging purposes
+        // int x = getClk();
+        // printf("current time is %d\n", x);
+
         Curr = dequeue(queue);
         enqueue(SentQueue, Curr);
         while (Curr->arrivalTime > getClk())
@@ -134,6 +141,11 @@ int main(int argc, char *argv[])
             exit(1);
         }
     }
+    // Send a message to indicate that all processes have been sent to the scheduler
+    ProcessMsg msg;
+    msg.mtype = 2;
+    msgsnd(MessageQueueId, &msg, sizeof(ProcessMsg), 0) ;
+    
     printf("All processes sent to the scheduler\n");
 
     waitpid(scheduler, NULL, 0);

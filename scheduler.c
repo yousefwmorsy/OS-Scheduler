@@ -161,7 +161,10 @@ int main(int argc, char *argv[])
     enum schedulealgo algo = atoi(argv[1]);
     int quantum = atoi(argv[2]);
     int MessageQueueId = msgget(MSG_KEY, IPC_CREAT | 0666);
-    while(1){ //to be changed to something that indicates that the readyqueue is not empty (not all processes terminated)
+
+
+    /// added marker message to indicate all proccesses are sent to the scheduler (mtype==2) default 1
+     while(1){ //to be changed to something that indicates that the readyqueue is not empty (not all processes terminated)
         if(!checkifEnd(MessageQueueId)){ //checks for ending msg from generator indicating no more processes
             checkforNewProcesses(MessageQueueId); //checks for new processes sent by gen and adds them to ready queue
         }
