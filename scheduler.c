@@ -7,7 +7,7 @@ bool checkifEnd(int msg_q){
     }
     return false;
 }
-void checkforNewProcesses(int msg_q){
+void checkforNewProcesses(int msg_q, int algo){
     ProcessMsg msg;
     while(msgrcv(msg_q, &msg, sizeof(ProcessMsg), 1, IPC_NOWAIT)){ //wait for msg of type 1 (process)
         int pid = fork();
@@ -28,6 +28,18 @@ void checkforNewProcesses(int msg_q){
             }
             *obj = pcb_init(&msg, pid); // Initialize the PCB
 
+            //add to suitable ds
+            switch(algo){
+                case HPF:
+
+                    break;
+                case SRTN: 
+                    
+                    break;
+                case RR:
+
+                    break;
+            }
         }
     }
 }
@@ -163,7 +175,7 @@ int main(int argc, char *argv[])
     int MessageQueueId = msgget(MSG_KEY, IPC_CREAT | 0666);
     while(1){ //to be changed to something that indicates that the readyqueue is not empty (not all processes terminated)
         if(!checkifEnd(MessageQueueId)){ //checks for ending msg from generator indicating no more processes
-            checkforNewProcesses(MessageQueueId); //checks for new processes sent by gen and adds them to ready queue
+            checkforNewProcesses(MessageQueueId, algo); //checks for new processes sent by gen and adds them to ready queue
         }
 
         //run the algorithms
