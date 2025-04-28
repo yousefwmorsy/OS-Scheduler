@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
-#include <string.h>
 
 #define MAX_LINE_LENGTH 256
 typedef struct
@@ -20,6 +19,7 @@ AllProcessesQueue *SentQueue;
 int main(int argc, char *argv[])
 {
     signal(SIGINT, clearResources);
+    
     // TODO Initialization
     // 1. Read the input files.
     FILE *inputfile = fopen("processes.txt", "r");
@@ -84,6 +84,16 @@ int main(int argc, char *argv[])
         perror("clock execl failed\n");
     };
 
+    // Convert algorithm and time quantum to strings
+    char algo_str[10];
+    sprintf(algo_str, "%d", algo);
+    
+    char quantum_str[10] = "0"; // Default value
+    if (algo == 2) // If RR is selected
+    {
+        sprintf(quantum_str, "%d", timeQuantum);
+    }
+
     int scheduler = fork();
     if (scheduler == -1)
     {
@@ -91,9 +101,8 @@ int main(int argc, char *argv[])
     }
     else if (scheduler == 0)
     {
-        execl("./Compiled/scheduler.out", "./Compiled/scheduler.out", algo, timeQuantum, NULL);
-
-        printf("scheduler execl failed\n");
+        execl("./Compiled/scheduler.out", "./Compiled/scheduler.out", algo_str, quantum_str, NULL);
+        perror("scheduler execl failed\n");
     }
     // 4. Use this function after creating the clock process to initialize clock
     initClk();
@@ -111,6 +120,7 @@ int main(int argc, char *argv[])
 
     // 6. Send the information to the scheduler at the appropriate time.
     int MessageQueueId = msgget(MSG_KEY, IPC_CREAT | 0666);
+    printf("Message queue ID (gen): %d\n", MessageQueueId);
 
     processNode *Curr;
     SentQueue = malloc(sizeof(AllProcessesQueue));
@@ -140,6 +150,7 @@ int main(int argc, char *argv[])
             printf("msgsnd failed");
             exit(1);
         }
+        printf("Sent MSG at %d \n", getClk());
     }
     // Send a message to indicate that all processes have been sent to the scheduler
     ProcessMsg msg;
@@ -150,6 +161,14 @@ int main(int argc, char *argv[])
 
     waitpid(scheduler, NULL, 0);
     printf("Scheduler terminated\n");
+
+    // Clear the message queue
+    struct msqid_ds buf;
+    if (msgctl(MessageQueueId, IPC_RMID, &buf) == -1) {
+        perror("Failed to clear message queue");
+    } else {
+        printf("Message queue cleared successfully\n");
+    }
 
     // 7. Clear clock resources
     destroyClk(true);
