@@ -1,5 +1,20 @@
 #include "headers.h"
 #define CirQ_SIZE 100
+
+bool readyQNotEmpty(int algo){
+    switch (algo){
+        case HPF:
+
+            break;
+        case SRTN:
+
+            break;
+        case RR:
+
+            break;
+    }
+}
+
 bool checkifEnd(int msg_q){
     ProcessMsg msg;
     if(msgrcv(msg_q, &msg, sizeof(ProcessMsg), 2, IPC_NOWAIT)){ //wait for msg of type 2
@@ -175,13 +190,12 @@ int main(int argc, char *argv[])
     int MessageQueueId = msgget(MSG_KEY, IPC_CREAT | 0666);
 
 
-    /// added marker message to indicate all proccesses are sent to the scheduler (mtype==2) default 1
-     while(1){ //to be changed to something that indicates that the readyqueue is not empty (not all processes terminated)
+     while(readyQNotEmpty(algo)){ //checks that the readyqueue is not empty (not all processes terminated)
         if(!checkifEnd(MessageQueueId)){ //checks for ending msg from generator indicating no more processes
             checkforNewProcesses(MessageQueueId, algo); //checks for new processes sent by gen and adds them to ready queue
         }
 
-        //run the algorithms
+        //run the algorithms (one iteration)
         switch (algo){
             case HPF:
 
