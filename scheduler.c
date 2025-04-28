@@ -19,6 +19,9 @@ bool readyQNotEmpty(int algo){
             break;
     }
 }
+
+
+
 void schedulerlogPrint (FILE *fp, int currentTime,pcb *pcb, char status [])
 //AHMED ABD-ELjALeel!!!!!!!! please use this and don't waste your time and copy the arguments from the use of the function in roundRobin so you don't waste time filling the arguments
 {
@@ -103,6 +106,32 @@ void checkforNewProcesses(int msg_q, int algo){
             }
         }
     }
+}
+
+void SRTN (int num_process, pcb *process[]){
+    PriQueue *PriQueue_obj;
+    PriQueue_obj->size = 0;
+    int completed = 0;
+    while (completed != num_process){
+        for(int i = 0; i < num_process; i++){ // Check for the new entered Processes
+            if(process[i] != NULL && process[i]->arrivalTime <= getClk() && process[i]->remainingTime > 0){
+                PriQueue_insert(PriQueue_obj, process[i]);
+            }
+        }
+
+        pcb * curr_process = PriQueue_peek(PriQueue_obj);
+        curr_process->status = 1;
+        curr_process->remainingTime --;
+
+        for (int i = 0; i < PriQueue_obj->size; i++){
+            PriQueue_obj->Process[i]->waitingTime++;
+        }
+
+        if(curr_process->remainingTime == 0){/*Not inserting in the Queue and send to the schedular that the process finish its work*/}
+        else{ PriQueue_insert(PriQueue_obj, curr_process);}        
+        sleep(1);
+    }
+
 }
 
 // void roundRobin(int quantum,int numProc, pcb *process[],FILE *fp) //assuming I am going to get a array of processes this assumption might not be true 
