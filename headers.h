@@ -249,7 +249,7 @@ pcb *dequeueCir(CircularQueue* q)
     // If the queue is empty, print an error message and
     // return -1
     if (isEmptyCir(q)) {
-        printf("Queue underflow\n");
+        // printf("Queue underflow\n"); //for now leave it like this
         return NULL;
     }
     // Get the data from the front of the queue
@@ -266,4 +266,50 @@ pcb *dequeueCir(CircularQueue* q)
     }
     // Return the dequeued data
     return data;
+}
+
+/*Here I assume the first process with the low remaining time will be at index 0
+*/
+#define MAX 100
+typedef struct
+{
+    pcb *Process[MAX];
+    int size;
+} PriQueue;
+
+void PriQueue_insert(PriQueue *pq ,pcb *p){ // insert at the Queue if there is free places otherwise return
+    if(pq->size >= MAX){
+        printf("Queue is Full....");
+        return;
+    }
+
+    int i = pq->size - 1;
+    while(i >= 0 && pq->Process[i]->remainingTime > p->remainingTime){ //Loop from the end of the Queue till you find your proper place to insert your self
+        pq->Process[i + 1] = pq->Process[i];
+        i--;
+    }
+    pq->Process[i+1] = p;
+    pq->size ++;
+}
+
+pcb* PriQueue_pop(PriQueue *pq) { // Getting the 
+    if (pq->size == 0) {
+        printf("Queue is empty");
+        return NULL;
+    }
+    pcb *p = pq->Process[0];
+
+    for (int i = 1; i < pq->size; i++) {
+        pq->Process[i - 1] = pq->Process[i];
+    }
+    pq->size--;
+    return p;
+}
+
+pcb* PriQueue_peek(PriQueue *pq) {
+    if (pq->size == 0) {
+        printf("Queue is empty");
+        return NULL;
+    }
+    return pq->Process[0];
 }

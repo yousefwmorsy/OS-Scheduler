@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
-#include <string.h>
 
 #define MAX_LINE_LENGTH 256
 typedef struct
