@@ -193,7 +193,7 @@ pcb pcb_init(ProcessMsg* processmsg, int sysid){
     pcbobj.systemid = sysid; // Set to the forked process ID
     pcbobj.status = WAITING;
     pcbobj.arrivalTime = processmsg->arrivalTime;
-    pcbobj.executionTime = 0; 
+    pcbobj.executionTime = processmsg->runTime; 
     pcbobj.remainingTime = processmsg->runTime;
     pcbobj.waitingTime = -1; // Initialize to -1 to indicate not started
     pcbobj.priority = processmsg->priority;
