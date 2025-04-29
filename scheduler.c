@@ -210,7 +210,7 @@ void roundRobin(int quantum,int numProc, pcb *process[],FILE *fp) //assuming I a
     queue->rear = -1;
     int alldone = 0;
     int countDone = 0;
-    pcb *pcbtemp = malloc(numProc * sizeof(pcb));
+    pcb *pcbtemp = malloc(sizeof(pcb));
     printf("Round Robin started\n");
     while (1)
     {
@@ -254,8 +254,9 @@ void roundRobin(int quantum,int numProc, pcb *process[],FILE *fp) //assuming I a
             {
                 int finishTime = currentTime + pcbtemp->remainingTime; // End time of the process
                 while(currentTime + pcbtemp->remainingTime  > getClk()){}
-                schedulerlogPrint(fp,currentTime + pcbtemp->remainingTime , pcbtemp,"finished");
                 pcbtemp->remainingTime = 0;
+                schedulerlogPrint(fp,finishTime , pcbtemp,"finished");
+                free(pcbtemp);
                 countDone++;
             }
 
@@ -265,7 +266,6 @@ void roundRobin(int quantum,int numProc, pcb *process[],FILE *fp) //assuming I a
             }
         }
     }
-    free(pcbtemp);
     free(queue);
 
 }
