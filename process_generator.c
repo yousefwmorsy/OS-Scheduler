@@ -121,7 +121,10 @@ int main(int argc, char *argv[])
     // 6. Send the information to the scheduler at the appropriate time.
     int MessageQueueId = msgget(MSG_KEY, IPC_CREAT | 0666);
     printf("Message queue ID (gen): %d\n", MessageQueueId);
-
+    if (MessageQueueId == -1) {
+        perror("Failed to create/get message queue");
+        exit(1);
+    }
     processNode *Curr;
     SentQueue = malloc(sizeof(AllProcessesQueue));
 

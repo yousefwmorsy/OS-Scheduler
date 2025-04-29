@@ -5,6 +5,7 @@ float WTA; // waiting time of the process
 int WT; // turnaround time of the process
 int execTime; // execution time of the process
 int countGlobal = 0; // number of processes in the system
+int IdleTime = 0;
 PCBPriQ* PriQ; //ready queue for HPF
 
 
@@ -14,7 +15,8 @@ PCBPriQ* PriQ; //ready queue for HPF
 bool readyQNotEmpty(int algo){
     switch (algo){
         case HPF:
-            return !(PCBPriQ_isEmpty(PriQ));
+            //printf("Q Empty %d", PCBPriQ_isEmpty(PriQ));
+            return (PCBPriQ_isEmpty(PriQ) == 0);
             break;
         case SRTN:
             
@@ -150,30 +152,37 @@ void SRTN_func (int num_process, pcb *process[]){
 
 }
 
-void HPF_Iter(){
+void HPF_Iter(FILE *fp, FILE *fp2){
     pcb* head = PCBPriQ_peek(PriQ);
     if (head == NULL) {
-        //printf("No process in the queue to run\n");
+        printf("No process in the queue to run\n");
+        IdleTime++;
         return;
     }
     
     if(head->remainingTime == 0){
         printf("Process %d Terminated at %d\n", head->givenid, getClk());
-        kill(head->sysstemid, SIGKILL); //temporary for testing purposes
+        schedulerlogPrint(fp, getClk(), head, "finished"); 
+        kill(head->systemid, SIGKILL); //temporary for testing purposes
         PCBPriQ_dequeue(PriQ);
     }
     else{
         // Set waiting time when first executing the process
         if(head->waitingTime == -1){
             head->waitingTime = getClk() - head->arrivalTime;
-
         }
-        // Continue the process execution
-        kill(head->sysstemid, SIGCONT);
-        
+        if(head->status == WAITING){
+            // Continue the process execution
+            kill(head->systemid, SIGCONT);
+            head->status = RUNNING;
+            schedulerlogPrint(fp, getClk(), head, "started"); 
+        }
+        //int curr = getClk();
+        //printf("ok");
+        //while(curr == getClk()){}
+        //printf("whoo");
         // Only decrement the remaining time once per clock tick
         head->remainingTime--;
-        head->status = RUNNING;
         printf("Running Process %d at %d, remaining time: %d\n", head->givenid, getClk(), head->remainingTime);
     }
 
@@ -266,94 +275,95 @@ int main(int argc, char *argv[])
     printf("Message queue ID (sch): %d\n", MessageQueueId);
     
     //initialise queues to be used in algorithm iterations
-    PriQ = PCBPriQ_init(); 
+    if(algo == HPF) PriQ = PCBPriQ_init(); 
     printf("PCB init completed\n");
     
-    
-    int lastClk = -1;
-    while(!checkifEnd(MessageQueueId) || readyQNotEmpty(algo)) { 
-        // Check for new processes only when needed
-        if(!checkifEnd(MessageQueueId)) {
-            checkforNewProcesses(MessageQueueId, algo);
-        }
+    FILE *fp = fopen("schedulerlog.txt", "w");
+    FILE *fp2 = fopen("schedulerPref.txt", "w");
 
-     while(readyQNotEmpty(algo)){ //checks that the readyqueue is not empty (not all processes terminated)
-        if(!checkifEnd(MessageQueueId)){ //checks for ending msg from generator indicating no more processes
-            checkforNewProcesses(MessageQueueId, algo); //checks for new processes sent by gen and adds them to ready queue
-        }
+    bool end = 0;
+    while(!end || readyQNotEmpty(algo)) { 
+        // Check for new processes only when needed
+        end = end ? end : checkifEnd(MessageQueueId);
+        //printf("End = %d", end);
+        checkforNewProcesses(MessageQueueId, algo);
+        
         // Only run algorithm iterations when the clock ticks
-        int currentClk = getClk();
-        if (currentClk > lastClk) {
-            lastClk = currentClk;
-        }
+
         //run the algorithms (one iteration)
         switch (algo){
             case HPF:
-
+                HPF_Iter(fp, fp2);
                 break;
             case SRTN:
 
                 break;
             case RR:
-            printf("Round Robin\n");
-            FILE *fp = fopen("schedulerlog.txt", "w");
-            //roundRobin(quantum, 6, process, fp); //call the round robin function with the processes and the quantum time
-            CircularQueue *queue = malloc(sizeof(CircularQueue));
-            queue->front = -1;
-            queue->rear = -1;
-            int alldone = 0;
-            int countDone = 0;
-            pcb *pcbtemp = malloc(sizeof(pcb));
-            //todo list
-            //should take the processes with arrival time equals to the current time here
-            //should add to countglobal here too
-            //should add to circular queue here too
-            //should add to the execution time gloabl variable here too
-            pcbtemp = dequeueCir(queue);
-        if (pcbtemp != NULL)
-        {
-        int currentTime = getClk(); // Time when it get dequeued (start time)
+                printf("Round Robin\n");
+                FILE *fp = fopen("schedulerlog.txt", "w");
+                //roundRobin(quantum, 6, process, fp); //call the round robin function with the processes and the quantum time
+                CircularQueue *queue = malloc(sizeof(CircularQueue));
+                queue->front = -1;
+                queue->rear = -1;
+                int alldone = 0;
+                int countDone = 0;
+                pcb *pcbtemp = malloc(sizeof(pcb));
+                //todo list
+                //should take the processes with arrival time equals to the current time here
+                //should add to countglobal here too
+                //should add to circular queue here too
+                //should add to the execution time gloabl variable here too
+                pcbtemp = dequeueCir(queue);
+                if (pcbtemp != NULL)
+                {
+                int currentTime = getClk(); // Time when it get dequeued (start time)
 
-        if(pcbtemp->waitingTime == 0 && pcbtemp->executionTime == pcbtemp->remainingTime) //I think that execution time is the time need for it to finish from the start not sure
-        {
-            pcbtemp->waitingTime = currentTime - pcbtemp->arrivalTime; // Waiting time of the process
-            schedulerlogPrint(fp, currentTime, pcbtemp, "started"); 
-            WT+= pcbtemp->waitingTime;
-        }
-        
-        else
+                if(pcbtemp->waitingTime == 0 && pcbtemp->executionTime == pcbtemp->remainingTime) //I think that execution time is the time need for it to finish from the start not sure
+                {
+                    pcbtemp->waitingTime = currentTime - pcbtemp->arrivalTime; // Waiting time of the process
+                    schedulerlogPrint(fp, currentTime, pcbtemp, "started"); 
+                    WT+= pcbtemp->waitingTime;
+                }
+                
+                else
 
-        {
-            schedulerlogPrint(fp, currentTime, pcbtemp, "resumed");
-        }
-        
-            if (pcbtemp->remainingTime > quantum)
-            {
-                pcbtemp->remainingTime -= quantum;
-                while(currentTime + quantum > getClk()){}
-                enqueueCir(queue, pcbtemp);
-                schedulerlogPrint(fp, currentTime + quantum, pcbtemp, "stopped"); 
+                {
+                    schedulerlogPrint(fp, currentTime, pcbtemp, "resumed");
+                }
+                
+                    if (pcbtemp->remainingTime > quantum)
+                    {
+                        pcbtemp->remainingTime -= quantum;
+                        while(currentTime + quantum > getClk()){}
+                        enqueueCir(queue, pcbtemp);
+                        schedulerlogPrint(fp, currentTime + quantum, pcbtemp, "stopped"); 
+                    }
+                    else
+                    {
+                        int finishTime = currentTime + pcbtemp->remainingTime; // End time of the process
+                        while(currentTime + pcbtemp->remainingTime  > getClk()){}
+                        schedulerlogPrint(fp,currentTime + pcbtemp->remainingTime , pcbtemp,"finished");
+                        pcbtemp->remainingTime = 0;
+                        countDone++;
+                    }
+
+                FILE *fp2 = fopen("schedulerPref.txt", "w");
+                schedulerPrefPrint(fp2); //print final results in pref file
+                free(pcbtemp);
+                free(queue);
+                fclose(fp);
+                fclose(fp2);
+                    break;
             }
-            else
-            {
-                int finishTime = currentTime + pcbtemp->remainingTime; // End time of the process
-                while(currentTime + pcbtemp->remainingTime  > getClk()){}
-                schedulerlogPrint(fp,currentTime + pcbtemp->remainingTime , pcbtemp,"finished");
-                pcbtemp->remainingTime = 0;
-                countDone++;
-            }
         }
-
-            FILE *fp2 = fopen("schedulerPref.txt", "w");
-            schedulerPrefPrint(fp2); //print final results in pref file
-            free(pcbtemp);
-            free(queue);
-            fclose(fp);
-            fclose(fp2);
-                break;
-        }
+        PCBPriQ_printGivenIDs(PriQ);
+        sleep(1);
     }
-
+    schedulerPrefPrint(fp2); //print final results in pref file
+    printf("done");
+    fclose(fp);
+    fclose(fp2);
+    free(PriQ);
     destroyClk(true);
     exit(0);
 }
