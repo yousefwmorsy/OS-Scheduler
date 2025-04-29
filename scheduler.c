@@ -16,7 +16,7 @@ bool readyQNotEmpty(int algo){
             return (PCBPriQ_isEmpty(PriQ) == 0);
             break;
         case SRTN:
-            return (SRTN_Queue->size == 0);
+            return (SRTN_Queue->size != 0);
             break;
         case RR:
             
