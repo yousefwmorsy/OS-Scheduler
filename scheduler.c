@@ -7,10 +7,7 @@ int execTime; // execution time of the process
 int countGlobal = 0; // number of processes in the system
 int IdleTime = 0;
 PCBPriQ* PriQ; //ready queue for HPF
-
-
-
-
+SRTN_PriQueue* SRTN_Queue;
 
 bool readyQNotEmpty(int algo){
     switch (algo){
@@ -19,15 +16,13 @@ bool readyQNotEmpty(int algo){
             return (PCBPriQ_isEmpty(PriQ) == 0);
             break;
         case SRTN:
-            
+            return (SRTN_Queue->size == 0);
             break;
         case RR:
             
             break;
     }
 }
-
-
 
 void schedulerlogPrint (FILE *fp, int currentTime,pcb *pcb, char status [])
 //AHMED ABD-ELjALeel!!!!!!!! please use this and don't waste your time and copy the arguments from the use of the function in roundRobin so you don't waste time filling the arguments
@@ -43,7 +38,7 @@ void schedulerlogPrint (FILE *fp, int currentTime,pcb *pcb, char status [])
     int remainingTime = pcb->remainingTime;
     int waitingTime = pcb->waitingTime;
     
-    if (status == "finished")
+    if (strcmp(status, "finished") == 0)
     {
         int turnaroundTime = currentTime - arrivalTime;
         float weightedTA = (float)turnaroundTime / totalTime;
@@ -115,8 +110,10 @@ void checkforNewProcesses(int msg_q, int algo){
                     PCBPriQ_enqueue(PriQ, obj);
                     printf("Enqueued process ID=%d into priority queue\n", obj->givenid);
                     break;
-                case SRTN: 
-                    
+                case SRTN:
+                    printf("SRTN: Entered!!");
+                    SRTN_PriQueue_insert(SRTN_Queue, obj);
+                    printf("Enqueued process ID=%d into SRTN queue\n", obj->givenid);
                     break;
                 case RR:
 
@@ -126,35 +123,45 @@ void checkforNewProcesses(int msg_q, int algo){
     }
 }
 
-void SRTN_func (int num_process, pcb *process[]){
-    PriQueue *PriQueue_obj;
-    PriQueue_obj->size = 0;
-    int completed = 0;
-    while (completed != num_process){
-        for(int i = 0; i < num_process; i++){ // Check for the new entered Processes
-            if(process[i] != NULL && process[i]->arrivalTime <= getClk() && process[i]->remainingTime > 0){
-                PriQueue_insert(PriQueue_obj, process[i]);
-            }
-        }
-
-        pcb * curr_process = PriQueue_peek(PriQueue_obj);
-        curr_process->status = 1;
-        curr_process->remainingTime --;
-
-        for (int i = 0; i < PriQueue_obj->size; i++){
-            PriQueue_obj->Process[i]->waitingTime++;
-        }
-
-        if(curr_process->remainingTime == 0){/*Not inserting in the Queue and send to the schedular that the process finish its work*/}
-        else{ PriQueue_insert(PriQueue_obj, curr_process);}        
-        sleep(1);
+void SRTN_func (FILE *fp, FILE *fp2){
+    //Check if any process enqueued in the Queue or not
+    printf("Iam in SRTN");
+    if(SRTN_Queue->size == 0){
+        printf("SRTN: No process in the Queue yet...");
+        IdleTime++;
+        return;
     }
 
+    pcb *current_process = SRTN_PriQueue_peek(SRTN_Queue);
+    if(current_process->waitingTime == -1){
+        current_process->waitingTime = 0;
+        schedulerlogPrint(fp, getClk(), current_process, "started");
+    }
+
+    for (int i = 1; i < SRTN_Queue->size; i++){
+        if(current_process->waitingTime == -1) current_process->waitingTime = 0;
+        else SRTN_Queue->Process[i]->waitingTime++;
+    }
+
+    current_process->remainingTime--;
+    if (current_process->remainingTime == 0){
+        printf("SRTN: Process %d Terminated at %d\n", current_process->givenid, getClk());
+        schedulerlogPrint(fp, getClk(), current_process, "finished"); 
+
+        int turn_around_time = getClk() - current_process->arrivalTime;
+        WT += current_process->waitingTime;
+        WTA += (float)turn_around_time / current_process->executionTime;
+
+        kill(current_process->systemid, SIGKILL); //temporary for testing purposes
+        SRTN_PriQueue_pop(SRTN_Queue);
+    }
+
+    printf("SRTN: Running Process %d at %d, remaining time: %d\n", current_process->givenid, getClk(), current_process->remainingTime);
 }
 
 void HPF_Iter(FILE *fp, FILE *fp2){
     pcb* head = PCBPriQ_peek(PriQ);
-    if (head == NULL) {
+        if (head == NULL) {
         printf("No process in the queue to run\n");
         IdleTime++;
         return;
@@ -272,12 +279,14 @@ int main(int argc, char *argv[])
         perror("Failed to create/get message queue");
         exit(1);
     }
+
     printf("Message queue ID (sch): %d\n", MessageQueueId);
-    
+
     //initialise queues to be used in algorithm iterations
     if(algo == HPF) PriQ = PCBPriQ_init(); 
+    if(algo == SRTN) SRTN_Queue = SRTN_PriQueue_init(100);
     printf("PCB init completed\n");
-    
+
     FILE *fp = fopen("schedulerlog.txt", "w");
     FILE *fp2 = fopen("schedulerPref.txt", "w");
 
@@ -287,16 +296,16 @@ int main(int argc, char *argv[])
         end = end ? end : checkifEnd(MessageQueueId);
         //printf("End = %d", end);
         checkforNewProcesses(MessageQueueId, algo);
-        
-        // Only run algorithm iterations when the clock ticks
 
+        // Only run algorithm iterations when the clock ticks
         //run the algorithms (one iteration)
         switch (algo){
             case HPF:
                 HPF_Iter(fp, fp2);
                 break;
             case SRTN:
-
+                printf("\nSRTN: \n");
+                SRTN_func(fp, fp2);
                 break;
             case RR:
                 printf("Round Robin\n");
@@ -364,6 +373,7 @@ int main(int argc, char *argv[])
     fclose(fp);
     fclose(fp2);
     free(PriQ);
+    SRTN_PriQueue_free(SRTN_Queue);
     destroyClk(true);
     exit(0);
 }
