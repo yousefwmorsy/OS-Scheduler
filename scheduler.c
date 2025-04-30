@@ -178,6 +178,7 @@ void SRTN_func(FILE *fp, FILE *fp2)
     // 3. Start The Process if its first time to start
     if (current_process->remainingTime == current_process->executionTime)
     {
+
         schedulerlogPrint(fp, getClk(), current_process, "started");
     }
 
@@ -190,21 +191,22 @@ void SRTN_func(FILE *fp, FILE *fp2)
 
     // 5. Decrement the remaining time of the peeked Process
     current_process->remainingTime--;
-
+    kill(current_process->systemid, SIGCONT); // run the process
     // 6. Check if its fished or not, If true pop it and kill it.
     if (current_process->remainingTime == 0)
     {
         printf("SRTN: Process %d Terminated at %d\n", current_process->givenid, getClk());
         schedulerlogPrint(fp, getClk(), current_process, "finished");
-
+        kill(current_process->systemid, SIGCONT); // run the process one last time to finish it
         int turn_around_time = getClk() - current_process->arrivalTime;
 
-        kill(current_process->systemid, SIGKILL); // temporary for testing purposes
+        // kill(current_process->systemid, SIGKILL); // temporary for testing purposes
         SRTN_PriQueue_pop(SRTN_Queue);
     }
     else
     {
         // 7. Print the curent states of the current moment of the process
+        // kill(current_process->systemid, SIGSTOP); // Stop the process
         printf("SRTN: Running Process %d at %d, remsaining time: %d\n", current_process->givenid, getClk(), current_process->remainingTime);
     }
 }
@@ -245,7 +247,6 @@ void HPF_Iter(FILE *fp, FILE *fp2)
         kill(head->systemid, SIGCONT); // Continue the process execution
         head->remainingTime--;
         printf("Running Process %d at %d, remaining time: %d\n", head->givenid, getClk(), head->remainingTime);
-        // kill(head->systemid, SIGSTOP); // Stop the process
     }
 }
 

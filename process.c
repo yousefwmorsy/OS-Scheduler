@@ -31,7 +31,7 @@ int main(int agrc, char *argv[])
     remainingtime = atoi(argv[1]); // get the remaining time from the command line arguments
     PID = atoi(argv[2]);           // get the PID from the command line arguments
 
-    printf("Process %d started and recieved %d remaining time \n", getpid(), remainingtime);
+    printf("Process %d started and recieved %d remaining time \n", PID, remainingtime);
 
     // TODO it needs to get the remaining time from somewhere
     // remainingtime = ??;
