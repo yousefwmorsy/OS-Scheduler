@@ -146,10 +146,10 @@ void SRTN_func (FILE *fp){
         if(SRTN_Queue->Process[i] != current_process) SRTN_Queue->Process[i]->waitingTime++; // Here it will increment the waiting time of any process which now doesn't take the process. 
     }
     
-    //7. Decrement the remaining time of the peeked Process
+    //5. Decrement the remaining time of the peeked Process
     current_process->remainingTime--;
     
-    //5. Check if its fished or not, If true pop it and kill it.
+    //6. Check if its fished or not, If true pop it and kill it.
     if (current_process->remainingTime == 0){
         printf("SRTN: Process %d Terminated at %d\n", current_process->givenid, getClk());
         schedulerlogPrint(fp, getClk(), current_process, "finished"); 
@@ -160,7 +160,7 @@ void SRTN_func (FILE *fp){
         SRTN_PriQueue_pop(SRTN_Queue);
         kill(current_process->systemid, SIGKILL); //temporary for testing purposes
     }else{
-        //6. Print the curent states of the current moment of the process if not its end
+        //7. Print the curent states of the current moment of the process if not its end
         printf("SRTN: Running Process %d at %d, remaining time: %d\n", current_process->givenid, getClk(), current_process->remainingTime);
     }
 
