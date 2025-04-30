@@ -7,24 +7,22 @@ void handler(int signum)
 {
     if (remainingtime <= 1)
     {
-        printf("Processssssssssss %d terminated\n", PID);
+        printf("Processssssssssss %d terminated at time %d\n", PID, getClk());
         exit(0);
     }
     else
     {
         remainingtime--;
-        printf("Process %d received signal, remaining time: %d\n", PID, remainingtime);
+        printf("Process %d received signal at time %d, remaining time: %d\n", PID, getClk(), remainingtime);
     } // Set remaining time to 0 when signal is received
     signal(SIGCONT, handler);
 }
-void clearResources(int signum)
+void stopping(int signum)
 {
     // TODO Clears all resources in case of interruption
-
-    // signal(SIGUSR1, clearResources);
-    // destroyClk(true);
-    exit(0);
+    pause();
 }
+
 int main(int agrc, char *argv[])
 {
     initClk();
@@ -35,7 +33,8 @@ int main(int agrc, char *argv[])
 
     // TODO it needs to get the remaining time from somewhere
     // remainingtime = ??;
-    signal(SIGCONT, handler); // Register handler for SIGUSR1 signal
+    signal(SIGCONT, handler);  // Register handler for SIGUSR1 signal
+    signal(SIGTSTP, stopping); // Register handler for SIGINT signal
     // signal(SIGUSR1, clearResources); // Register handler for SIGINT signal
     while (1)
     {

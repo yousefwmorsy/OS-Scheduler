@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <stdio.h> //if you don't use scanf/printf change this include
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -150,20 +151,22 @@ void ClearQueue(AllProcessesQueue *q)
     q->backptr = NULL;
 }
 
-
-enum schedulealgo {
+enum schedulealgo
+{
     HPF = 0,
     SRTN = 1,
     RR = 2
 };
 
-enum pstatus {
+enum pstatus
+{
     RUNNING = 0,
     WAITING = 1
 };
 
-typedef struct {
-    //processNode* process;
+typedef struct
+{
+    // processNode* process;
     enum pstatus status;
     int givenid;
     pid_t systemid;
@@ -187,69 +190,73 @@ typedef struct {
 //     return pcbobj;
 // };
 
-pcb pcb_init(ProcessMsg* processmsg, int sysid){
+pcb pcb_init(ProcessMsg *processmsg, int sysid)
+{
     pcb pcbobj;
     pcbobj.givenid = processmsg->id;
     pcbobj.systemid = sysid; // Set to the forked process ID
     pcbobj.status = WAITING;
     pcbobj.arrivalTime = processmsg->arrivalTime;
-    pcbobj.executionTime = processmsg->runTime; 
+    pcbobj.executionTime = processmsg->runTime;
     pcbobj.remainingTime = processmsg->runTime;
     pcbobj.waitingTime = 0;
     pcbobj.priority = processmsg->priority;
     return pcbobj;
 };
-//note it need a lot of improvments I know it is not right I am making the first version of the code and I will improve it later
-// Define the maximum size of the queue
+// note it need a lot of improvments I know it is not right I am making the first version of the code and I will improve it later
+//  Define the maximum size of the queue
 #define CirQ_SIZE 1000
 
-typedef struct {
-pcb *queue[CirQ_SIZE];
-int front ;
-int rear ;
+typedef struct
+{
+    pcb *queue[CirQ_SIZE];
+    int front;
+    int rear;
 } CircularQueue;
 
 // Function to check if the queue is full
-int isFullCir(CircularQueue* q)
+int isFullCir(CircularQueue *q)
 {
     // If the next position is the front, the queue is full
     return (q->rear + 1) % CirQ_SIZE == q->front;
 }
 
 // Function to check if the queue is empty
-int isEmptyCir(CircularQueue* q)
+int isEmptyCir(CircularQueue *q)
 {
     // If the front hasn't been set, the queue is empty
     return q->front == -1;
 }
 
 // Function to enqueue (insert) an element
-void enqueueCir(CircularQueue* q, pcb *data)
+void enqueueCir(CircularQueue *q, pcb *data)
 {
     // If the queue is full, print an error message and
     // return
-    if (isFullCir(q)) {
+    if (isFullCir(q))
+    {
         printf("Queue overflow\n");
         return;
     }
     // If the queue is empty, set the front to the first
     // position
-    if (q->front == -1) {
+    if (q->front == -1)
+    {
         q->front = 0;
     }
     // Add the data to the queue and move the rear pointer
     q->rear = (q->rear + 1) % CirQ_SIZE;
     q->queue[q->rear] = data;
-    //printf("Element %d inserted\n", data.process->processID);
+    // printf("Element %d inserted\n", data.process->processID);
 }
 
-
 // Function to dequeue (remove) an element
-pcb *dequeueCir(CircularQueue* q)
+pcb *dequeueCir(CircularQueue *q)
 {
     // If the queue is empty, print an error message and
     // return -1
-    if (isEmptyCir(q)) {
+    if (isEmptyCir(q))
+    {
         // printf("Queue underflow\n"); //for now leave it like this
         return NULL;
     }
@@ -257,10 +264,12 @@ pcb *dequeueCir(CircularQueue* q)
     pcb *data = q->queue[q->front];
     // If the front and rear pointers are at the same
     // position, reset them
-    if (q->front == q->rear) {
+    if (q->front == q->rear)
+    {
         q->front = q->rear = -1;
     }
-    else {
+    else
+    {
         // Otherwise, move the front pointer to the next
         // position
         q->front = (q->front + 1) % CirQ_SIZE;
@@ -269,20 +278,23 @@ pcb *dequeueCir(CircularQueue* q)
     return data;
 }
 
-
-typedef struct PCBNode {
+typedef struct PCBNode
+{
     pcb PCB;
-    struct PCBNode* next;
+    struct PCBNode *next;
 } PCBNode;
 
-typedef struct {
-    PCBNode* head;
+typedef struct
+{
+    PCBNode *head;
 } PCBPriQ;
 
 // Initialize the priority queue
-PCBPriQ* PCBPriQ_init() {
-    PCBPriQ* queue = malloc(sizeof(PCBPriQ));
-    if (!queue) {
+PCBPriQ *PCBPriQ_init()
+{
+    PCBPriQ *queue = malloc(sizeof(PCBPriQ));
+    if (!queue)
+    {
         printf("Memory allocation failed\n");
         exit(1);
     }
@@ -291,9 +303,11 @@ PCBPriQ* PCBPriQ_init() {
 }
 
 // Insert a PCB into the priority queue
-void PCBPriQ_enqueue(PCBPriQ* queue, pcb* newPCB) {
-    PCBNode* newNode = malloc(sizeof(PCBNode));
-    if (!newNode) {
+void PCBPriQ_enqueue(PCBPriQ *queue, pcb *newPCB)
+{
+    PCBNode *newNode = malloc(sizeof(PCBNode));
+    if (!newNode)
+    {
         printf("Memory allocation failed\n");
         exit(1);
     }
@@ -301,21 +315,27 @@ void PCBPriQ_enqueue(PCBPriQ* queue, pcb* newPCB) {
     newNode->next = NULL;
 
     // If the queue is empty, just add the new PCB
-    if (queue->head == NULL) {
+    if (queue->head == NULL)
+    {
         queue->head = newNode;
         return;
     }
-    
+
     // If the head process is RUNNING, we must not insert before it
-    if (queue->head->PCB.status == RUNNING) {
+    if (queue->head->PCB.status == RUNNING)
+    {
         // Insert after head, even if new process has higher priority
-        if (queue->head->next == NULL) {
+        if (queue->head->next == NULL)
+        {
             // If head is the only element
             queue->head->next = newNode;
-        } else {
+        }
+        else
+        {
             // Find appropriate position after head based on priority
-            PCBNode* current = queue->head;
-            while (current->next != NULL && current->next->PCB.priority <= newPCB->priority) {
+            PCBNode *current = queue->head;
+            while (current->next != NULL && current->next->PCB.priority <= newPCB->priority)
+            {
                 current = current->next;
             }
             newNode->next = current->next;
@@ -323,15 +343,18 @@ void PCBPriQ_enqueue(PCBPriQ* queue, pcb* newPCB) {
         }
     }
     // If head is not RUNNING, use normal priority-based insertion
-    else if (newPCB->priority < queue->head->PCB.priority) {
+    else if (newPCB->priority < queue->head->PCB.priority)
+    {
         // New PCB has higher priority than head
         newNode->next = queue->head;
         queue->head = newNode;
     }
-    else {
+    else
+    {
         // Traverse the list to find correct position based on priority
-        PCBNode* current = queue->head;
-        while (current->next != NULL && current->next->PCB.priority <= newPCB->priority) {
+        PCBNode *current = queue->head;
+        while (current->next != NULL && current->next->PCB.priority <= newPCB->priority)
+        {
             current = current->next;
         }
         newNode->next = current->next;
@@ -339,12 +362,14 @@ void PCBPriQ_enqueue(PCBPriQ* queue, pcb* newPCB) {
     }
 }
 // Remove the highest priority PCB from the queue
-pcb PCBPriQ_dequeue(PCBPriQ* queue) {
-    if (queue->head == NULL) {
+pcb PCBPriQ_dequeue(PCBPriQ *queue)
+{
+    if (queue->head == NULL)
+    {
         fprintf(stderr, "Queue underflow\n");
         exit(1);
     }
-    PCBNode* temp = queue->head;
+    PCBNode *temp = queue->head;
     pcb highestPriorityPCB = temp->PCB;
     queue->head = queue->head->next;
     free(temp);
@@ -352,34 +377,41 @@ pcb PCBPriQ_dequeue(PCBPriQ* queue) {
 }
 
 // Peek at the highest priority PCB without removing it
-pcb* PCBPriQ_peek(PCBPriQ* queue) {
-    if (queue->head == NULL) {
+pcb *PCBPriQ_peek(PCBPriQ *queue)
+{
+    if (queue->head == NULL)
+    {
         return NULL; // Queue is empty
     }
     return &queue->head->PCB;
-
 }
 
 // Check if the priority queue is empty
-int PCBPriQ_isEmpty(PCBPriQ* queue) {
+int PCBPriQ_isEmpty(PCBPriQ *queue)
+{
     return queue->head == NULL;
 }
 
 // Clear the priority queue
-void PCBPriQ_clear(PCBPriQ* queue) {
-    while (!PCBPriQ_isEmpty(queue)) {
+void PCBPriQ_clear(PCBPriQ *queue)
+{
+    while (!PCBPriQ_isEmpty(queue))
+    {
         PCBPriQ_dequeue(queue);
     }
     free(queue);
 }
 
 // Print the givenid of all PCBs in the priority queue in the format: P1 -> P2 -> P3 where P1 is the head
-void PCBPriQ_printGivenIDs(PCBPriQ* queue) {
-    PCBNode* current = queue->head;
+void PCBPriQ_printGivenIDs(PCBPriQ *queue)
+{
+    PCBNode *current = queue->head;
     printf("PCBPriQ: ");
-    while (current != NULL) {
+    while (current != NULL)
+    {
         printf("P%d(%c)", current->PCB.givenid, current->PCB.status == RUNNING ? 'R' : 'W');
-        if (current->next != NULL) {
+        if (current->next != NULL)
+        {
             printf(" -> ");
         }
         current = current->next;
@@ -388,7 +420,7 @@ void PCBPriQ_printGivenIDs(PCBPriQ* queue) {
 }
 
 /*Here I assume the first process with the low remaining time will be at index 0
-*/
+ */
 #define MAX 100
 typedef struct
 {
@@ -397,14 +429,17 @@ typedef struct
     int current_capacity;
 } SRTN_PriQueue;
 
-SRTN_PriQueue* SRTN_PriQueue_init(int capacity){
-    SRTN_PriQueue * pq = malloc(sizeof(SRTN_PriQueue));
-    if(!pq){
+SRTN_PriQueue *SRTN_PriQueue_init(int capacity)
+{
+    SRTN_PriQueue *pq = malloc(sizeof(SRTN_PriQueue));
+    if (!pq)
+    {
         perror("Failed to allocate SRTN_PriQueue");
         exit(1);
     }
     pq->Process = malloc(capacity * sizeof(pcb *));
-    if (!pq->Process) {
+    if (!pq->Process)
+    {
         perror("Failed to allocate process array");
         free(pq);
         exit(1);
@@ -414,53 +449,64 @@ SRTN_PriQueue* SRTN_PriQueue_init(int capacity){
     return pq;
 }
 
-void SRTN_PriQueue_insert(SRTN_PriQueue *pq ,pcb *p){ // insert at the Queue if there is free places otherwise return
-    if(pq->size >= pq->current_capacity){
+void SRTN_PriQueue_insert(SRTN_PriQueue *pq, pcb *p)
+{ // insert at the Queue if there is free places otherwise return
+    if (pq->size >= pq->current_capacity)
+    {
         printf("Queue is Full....");
         return;
     }
 
     int i = pq->size - 1;
-    while(i >= 0 && pq->Process[i]->remainingTime > p->remainingTime){ //Loop from the end of the Queue till you find your proper place to insert your self
+    while (i >= 0 && pq->Process[i]->remainingTime > p->remainingTime)
+    { // Loop from the end of the Queue till you find your proper place to insert your self
         pq->Process[i + 1] = pq->Process[i];
         i--;
     }
-    pq->Process[i+1] = p;
-    pq->size ++;
+    pq->Process[i + 1] = p;
+    pq->size++;
     printf("Inserted process ID=%d with remainingTime=%d into SRTN queue\n", p->givenid, p->remainingTime);
 }
 
-void RR_insert(CircularQueue *queue, pcb * data ) { // insert at the Queue if there is free places otherwise return
-    if (isFullCir(queue)) {
+void RR_insert(CircularQueue *queue, pcb *data)
+{ // insert at the Queue if there is free places otherwise return
+    if (isFullCir(queue))
+    {
         printf("Queue overflow\n");
         return;
     }
     enqueueCir(queue, data);
 }
 
-pcb* SRTN_PriQueue_pop(SRTN_PriQueue *pq) { // Getting the 
-    if (pq->size == 0) {
+pcb *SRTN_PriQueue_pop(SRTN_PriQueue *pq)
+{ // Getting the
+    if (pq->size == 0)
+    {
         printf("Queue is empty");
         return NULL;
     }
     pcb *p = pq->Process[0];
 
-    for (int i = 1; i < pq->size; i++) {
+    for (int i = 1; i < pq->size; i++)
+    {
         pq->Process[i - 1] = pq->Process[i];
     }
     pq->size--;
     return p;
 }
 
-pcb* SRTN_PriQueue_peek(SRTN_PriQueue *pq) {
-    if (pq->size == 0) {
+pcb *SRTN_PriQueue_peek(SRTN_PriQueue *pq)
+{
+    if (pq->size == 0)
+    {
         printf("Queue is empty");
         return NULL;
     }
     return pq->Process[0];
 }
 
-void SRTN_PriQueue_free(SRTN_PriQueue *pq){
+void SRTN_PriQueue_free(SRTN_PriQueue *pq)
+{
     free(pq->Process);
     free(pq);
 }

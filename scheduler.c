@@ -244,12 +244,13 @@ void HPF_Iter(FILE *fp, FILE *fp2)
         while (currentTime + 1 > getClk())
         {
         }
-        kill(head->systemid, SIGCONT); // Continue the process execution
+        kill(head->systemid, SIGCONT);
+
         head->remainingTime--;
         printf("Running Process %d at %d, remaining time: %d\n", head->givenid, getClk(), head->remainingTime);
+        // kill(head->systemid, SIGTSTP); // Stop the process
     }
 }
-
 void roundRobin(int quantum, FILE *fp) // assuming I am going to get a array of processes this assumption might not be true
 {
     pcbtempRR = NULL;
@@ -280,7 +281,7 @@ void roundRobin(int quantum, FILE *fp) // assuming I am going to get a array of 
             while (currentTime + quantum > getClk())
             {
             }
-            kill(pcbtempRR->systemid, SIGSTOP); // Stop the process
+            // kill(pcbtempRR->systemid, SIGSTOP); // Stop the process
             schedulerlogPrint(fp, currentTime + quantum, pcbtempRR, "stopped");
         }
         else
@@ -290,7 +291,7 @@ void roundRobin(int quantum, FILE *fp) // assuming I am going to get a array of 
             {
             }
             pcbtempRR->remainingTime = 0;
-            kill(pcbtempRR->systemid, SIGKILL);
+            kill(pcbtempRR->systemid, SIGCONT); // run for one last time to finish it
             schedulerlogPrint(fp, finishTime, pcbtempRR, "finished");
             // the function that will be traded for shawarma
             free(pcbtempRR);
