@@ -123,7 +123,7 @@ void checkforNewProcesses(int msg_q, int algo){
     }
 }
 
-void SRTN_func (FILE *fp, FILE *fp2){
+void SRTN_func (FILE *fp){
     //1.Check if any process enqueued in the Queue or not
     if(SRTN_Queue->size == 0){
         printf("SRTN: No process in the Queue yet...\n");
@@ -145,7 +145,10 @@ void SRTN_func (FILE *fp, FILE *fp2){
     for (int i = 0; i < SRTN_Queue->size; i++){
         if(SRTN_Queue->Process[i] != current_process) SRTN_Queue->Process[i]->waitingTime++; // Here it will increment the waiting time of any process which now doesn't take the process. 
     }
-
+    
+    //7. Decrement the remaining time of the peeked Process
+    current_process->remainingTime--;
+    
     //5. Check if its fished or not, If true pop it and kill it.
     if (current_process->remainingTime == 0){
         printf("SRTN: Process %d Terminated at %d\n", current_process->givenid, getClk());
@@ -154,15 +157,13 @@ void SRTN_func (FILE *fp, FILE *fp2){
         int turn_around_time = getClk() - current_process->arrivalTime;
         WT+= current_process->waitingTime;
         
-        kill(current_process->systemid, SIGKILL); //temporary for testing purposes
         SRTN_PriQueue_pop(SRTN_Queue);
+        kill(current_process->systemid, SIGKILL); //temporary for testing purposes
     }else{
         //6. Print the curent states of the current moment of the process if not its end
         printf("SRTN: Running Process %d at %d, remaining time: %d\n", current_process->givenid, getClk(), current_process->remainingTime);
     }
 
-    //7. Decrement the remaining time of the peeked Process
-    current_process->remainingTime--;
 }
 
 void HPF_Iter(FILE *fp, FILE *fp2){
@@ -191,10 +192,6 @@ void HPF_Iter(FILE *fp, FILE *fp2){
             head->status = RUNNING;
             schedulerlogPrint(fp, getClk(), head, "started"); 
         }
-        //int curr = getClk();
-        //printf("ok");
-        //while(curr == getClk()){}
-        //printf("whoo");
         // Only decrement the remaining time once per clock tick
         while(currentTime + 1 > getClk()){}
         head->remainingTime--;
@@ -299,31 +296,37 @@ int main(int argc, char *argv[])
     FILE *fp2 = fopen("schedulerPref.txt", "w");
 
     bool end = 0;
+    int current_time = getClk();
+    int last_time = current_time;
     while(!end || readyQNotEmpty(algo)) { 
-        // Check for new processes only when needed
-        end = end ? end : checkifEnd(MessageQueueId);
-        //printf("End = %d", end);
-        checkforNewProcesses(MessageQueueId, algo);
+        current_time = getClk();
 
-        // Only run algorithm iterations when the clock ticks
-        //run the algorithms (one iteration)
-        switch (algo){
-            case HPF:
-                HPF_Iter(fp, fp2);
-                break;
-            case SRTN:
-                SRTN_func(fp, fp2);
-                break;
-            case RR:
-                printf("Round Robin\n");
-                break;
-            }
-            if (algo == HPF)
-            {
-                //PCBPriQ_printGivenIDs(PriQ);
-            }
+        if(current_time > last_time){
+            last_time = current_time;
+            // Check for new processes only when needed
+            end = end ? end : checkifEnd(MessageQueueId);
+            //printf("End = %d", end);
+            checkforNewProcesses(MessageQueueId, algo);
+            // Only run algorithm iterations when the clock ticks
+            //run the algorithms (one iteration)
+            switch (algo){
+                case HPF:
+                    HPF_Iter(fp, fp2);
+                    break;
+                case SRTN:
+                    SRTN_func(fp);
+                    break;
+                case RR:
+                    printf("Round Robin\n");
+                    break;
+                }
+        }
+            // if (algo == HPF)
+            // {
+            //     //PCBPriQ_printGivenIDs(PriQ);
+            // }
             
-            if(algo != HPF) sleep(1); //to be changed
+            // if(algo != HPF) sleep(1); //to be changed
         }
     
     schedulerPrefPrint(fp2); //print final results in pref file
