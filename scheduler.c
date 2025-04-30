@@ -7,7 +7,7 @@ int TotalTime; // execution time of the process
 int countGlobal = 0; // number of processes in the system
 int IdleTime = 0;
 PCBPriQ* PriQ; //ready queue for HPF
-SRTN_PriQueue* SRTN_Queue;
+SRTN_PriQueue* SRTN_Queue; //Priority Queue for SRTN
 
 bool readyQNotEmpty(int algo){
     switch (algo){
@@ -124,40 +124,45 @@ void checkforNewProcesses(int msg_q, int algo){
 }
 
 void SRTN_func (FILE *fp, FILE *fp2){
-    //Check if any process enqueued in the Queue or not
+    //1.Check if any process enqueued in the Queue or not
     if(SRTN_Queue->size == 0){
-        printf("SRTN: No process in the Queue yet...");
+        printf("SRTN: No process in the Queue yet...\n");
         IdleTime++;
         return;
     }
 
+    //2. Peek the SRTN Process in the Priority Queue
     pcb *current_process = SRTN_PriQueue_peek(SRTN_Queue);
-    if(current_process->waitingTime == -1){
-        current_process->waitingTime = 0;
+
+    //3. Start The Process if its first time to start
+    if(current_process->remainingTime == current_process->executionTime){
         schedulerlogPrint(fp, getClk(), current_process, "started");
         countGlobal++; // use it with start for both of them
         TotalTime+= current_process->remainingTime;
     }
 
-    for (int i = 1; i < SRTN_Queue->size; i++){
-        if(current_process->waitingTime == -1) current_process->waitingTime = 0;
-        else SRTN_Queue->Process[i]->waitingTime++;
+    //4. Increment the waiting time of the other Processes
+    for (int i = 0; i < SRTN_Queue->size; i++){
+        if(SRTN_Queue->Process[i] != current_process) SRTN_Queue->Process[i]->waitingTime++; // Here it will increment the waiting time of any process which now doesn't take the process. 
     }
 
+    //5. Decrement the remaining time of the peeked Process
     current_process->remainingTime--;
+
+    //6. Check if its fished or not, If true pop it and kill it.
     if (current_process->remainingTime == 0){
         printf("SRTN: Process %d Terminated at %d\n", current_process->givenid, getClk());
         schedulerlogPrint(fp, getClk(), current_process, "finished"); 
 
         int turn_around_time = getClk() - current_process->arrivalTime;
         WT+= current_process->waitingTime;
-        WTA += (float)turn_around_time / current_process->executionTime;
-
+        
         kill(current_process->systemid, SIGKILL); //temporary for testing purposes
         SRTN_PriQueue_pop(SRTN_Queue);
+    }else{
+        //7. Print the curent states of the current moment of the process
+        printf("SRTN: Running Process %d at %d, remsaining time: %d\n", current_process->givenid, getClk(), current_process->remainingTime);
     }
-
-    printf("SRTN: Running Process %d at %d, remaining time: %d\n", current_process->givenid, getClk(), current_process->remainingTime);
 }
 
 void HPF_Iter(FILE *fp, FILE *fp2){
@@ -176,7 +181,7 @@ void HPF_Iter(FILE *fp, FILE *fp2){
     }
     else{
         // Set waiting time when first executing the process
-        if(head->waitingTime == -1){
+        if(head->remainingTime == head->executionTime){
             head->waitingTime = getClk() - head->arrivalTime;
         }
         if(head->status == WAITING){

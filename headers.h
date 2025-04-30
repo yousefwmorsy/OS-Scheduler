@@ -195,7 +195,7 @@ pcb pcb_init(ProcessMsg* processmsg, int sysid){
     pcbobj.arrivalTime = processmsg->arrivalTime;
     pcbobj.executionTime = processmsg->runTime; 
     pcbobj.remainingTime = processmsg->runTime;
-    pcbobj.waitingTime = -1; // Initialize to -1 to indicate not started
+    pcbobj.waitingTime = 0;
     pcbobj.priority = processmsg->priority;
     return pcbobj;
 };
