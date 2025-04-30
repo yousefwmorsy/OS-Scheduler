@@ -430,6 +430,14 @@ void SRTN_PriQueue_insert(SRTN_PriQueue *pq ,pcb *p){ // insert at the Queue if 
     printf("Inserted process ID=%d with remainingTime=%d into SRTN queue\n", p->givenid, p->remainingTime);
 }
 
+void RR_insert(CircularQueue *queue, pcb * data ) { // insert at the Queue if there is free places otherwise return
+    if (isFullCir(queue)) {
+        printf("Queue overflow\n");
+        return;
+    }
+    enqueueCir(queue, data);
+}
+
 pcb* SRTN_PriQueue_pop(SRTN_PriQueue *pq) { // Getting the 
     if (pq->size == 0) {
         printf("Queue is empty");

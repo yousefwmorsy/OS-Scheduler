@@ -8,6 +8,8 @@ int countGlobal = 0; // number of processes in the system
 int IdleTime = 0;
 PCBPriQ* PriQ; //ready queue for HPF
 SRTN_PriQueue* SRTN_Queue; //Priority Queue for SRTN
+CircularQueue* queue; //queue for RR
+pcb* pcbtempRR; //process that is running now
 
 bool readyQNotEmpty(int algo){
     switch (algo){
@@ -116,14 +118,21 @@ void checkforNewProcesses(int msg_q, int algo){
                     printf("Enqueued process ID=%d into SRTN queue\n", obj->givenid);
                     break;
                 case RR:
-
+                RR_insert(queue, obj ); //pcbtempRR is the process that is running now
                     break;
             }
         }
     }
+    if(algo == RR){
+        if (pcbtempRR != NULL)
+        {
+            RR_insert(queue, pcbtempRR); //pcbtempRR is the process that is running now
+            pcbtempRR = NULL; // Reset the pointer to avoid re-adding the same process
+        }  
+    }
 }
 
-void SRTN_func (FILE *fp){
+void SRTN_func (FILE *fp, FILE *fp2){
     //1.Check if any process enqueued in the Queue or not
     if(SRTN_Queue->size == 0){
         printf("SRTN: No process in the Queue yet...\n");
@@ -145,25 +154,24 @@ void SRTN_func (FILE *fp){
     for (int i = 0; i < SRTN_Queue->size; i++){
         if(SRTN_Queue->Process[i] != current_process) SRTN_Queue->Process[i]->waitingTime++; // Here it will increment the waiting time of any process which now doesn't take the process. 
     }
-    
+
     //5. Decrement the remaining time of the peeked Process
     current_process->remainingTime--;
-    
+
     //6. Check if its fished or not, If true pop it and kill it.
     if (current_process->remainingTime == 0){
         printf("SRTN: Process %d Terminated at %d\n", current_process->givenid, getClk());
         schedulerlogPrint(fp, getClk(), current_process, "finished"); 
-        
+
         int turn_around_time = getClk() - current_process->arrivalTime;
         WT+= current_process->waitingTime;
         
-        SRTN_PriQueue_pop(SRTN_Queue);
         kill(current_process->systemid, SIGKILL); //temporary for testing purposes
+        SRTN_PriQueue_pop(SRTN_Queue);
     }else{
-        //7. Print the curent states of the current moment of the process if not its end
-        printf("SRTN: Running Process %d at %d, remaining time: %d\n", current_process->givenid, getClk(), current_process->remainingTime);
+        //7. Print the curent states of the current moment of the process
+        printf("SRTN: Running Process %d at %d, remsaining time: %d\n", current_process->givenid, getClk(), current_process->remainingTime);
     }
-
 }
 
 void HPF_Iter(FILE *fp, FILE *fp2){
@@ -192,6 +200,10 @@ void HPF_Iter(FILE *fp, FILE *fp2){
             head->status = RUNNING;
             schedulerlogPrint(fp, getClk(), head, "started"); 
         }
+        //int curr = getClk();
+        //printf("ok");
+        //while(curr == getClk()){}
+        //printf("whoo");
         // Only decrement the remaining time once per clock tick
         while(currentTime + 1 > getClk()){}
         head->remainingTime--;
@@ -200,70 +212,52 @@ void HPF_Iter(FILE *fp, FILE *fp2){
 
 }
 
-void roundRobin(int quantum,int numProc, pcb *process[],FILE *fp) //assuming I am going to get a array of processes this assumption might not be true 
+void roundRobin(int quantum,FILE *fp) //assuming I am going to get a array of processes this assumption might not be true 
 {
-    CircularQueue *queue = malloc(sizeof(CircularQueue));
-    queue->front = -1;
-    queue->rear = -1;
     int alldone = 0;
     int countDone = 0;
-    pcb *pcbtemp = malloc(sizeof(pcb));
-    printf("Round Robin started\n");
-    while (1)
-    {
-        for (int i = 0; i < numProc; i++)
-        {
-            if(process[i]!=NULL && process[i]->arrivalTime <= getClk() && process[i]->remainingTime > 0)
-            {
-                TotalTime+=process[i]->executionTime;
-                enqueueCir(queue,process[i]);
-                countGlobal++;
-                process[i]=NULL;
-                printf("Process %d added to the queue\n", i);
-            }
-        }
-        pcbtemp = dequeueCir(queue);
-        if (pcbtemp != NULL)
+    pcb *pcbtempRR = NULL;
+    //printf("Round Robin started\n"); //remove it later
+        pcbtempRR = dequeueCir(queue);
+        if (pcbtempRR != NULL)
         {
         int currentTime = getClk(); // Time when it get dequeued (start time)
 
-        if(pcbtemp->waitingTime == 0 && pcbtemp->executionTime == pcbtemp->remainingTime) //I think that execution time is the time need for it to finish from the start not sure
+        if(pcbtempRR->waitingTime == 0 && pcbtempRR->executionTime == pcbtempRR->remainingTime) //I think that execution time is the time need for it to finish from the start not sure
         {
-            pcbtemp->waitingTime = currentTime - pcbtemp->arrivalTime; // Waiting time of the process
-            schedulerlogPrint(fp, currentTime, pcbtemp, "started"); 
-            WT+= pcbtemp->waitingTime;
+            pcbtempRR->waitingTime = currentTime - pcbtempRR->arrivalTime; // Waiting time of the process
+            kill(pcbtempRR->systemid, SIGCONT);
+            schedulerlogPrint(fp, currentTime, pcbtempRR, "started"); 
+            WT+= pcbtempRR->waitingTime;
         }
         
         else
 
         {
-            schedulerlogPrint(fp, currentTime, pcbtemp, "resumed");
+            kill(pcbtempRR->systemid, SIGCONT);
+            schedulerlogPrint(fp, currentTime, pcbtempRR, "resumed");
         }
         
-            if (pcbtemp->remainingTime > quantum)
+            if (pcbtempRR->remainingTime > quantum)
             {
-                pcbtemp->remainingTime -= quantum;
+                pcbtempRR->remainingTime -= quantum;
                 while(currentTime + quantum > getClk()){}
-                enqueueCir(queue, pcbtemp);
-                schedulerlogPrint(fp, currentTime + quantum, pcbtemp, "stopped"); 
+                kill(pcbtempRR->systemid, SIGSTOP); // Stop the process
+                schedulerlogPrint(fp, currentTime + quantum, pcbtempRR, "stopped"); 
             }
             else
             {
-                int finishTime = currentTime + pcbtemp->remainingTime; // End time of the process
-                while(currentTime + pcbtemp->remainingTime  > getClk()){}
-                pcbtemp->remainingTime = 0;
-                schedulerlogPrint(fp,finishTime , pcbtemp,"finished");
-                free(pcbtemp);
+                int finishTime = currentTime + pcbtempRR->remainingTime; // End time of the process
+                while(currentTime + pcbtempRR->remainingTime  > getClk()){}
+                pcbtempRR->remainingTime = 0;
+                kill(pcbtempRR->systemid, SIGKILL);
+                schedulerlogPrint(fp,finishTime , pcbtempRR,"finished");
+                // the function that will be traded for shawarma 
+                free(pcbtempRR);
+                pcbtempRR = NULL;
                 countDone++;
             }
-
-            if (numProc == countDone)
-            {
-                break;
-            }
         }
-    }
-    free(queue);
 
 }
     
@@ -290,6 +284,13 @@ int main(int argc, char *argv[])
     //initialise queues to be used in algorithm iterations
     if(algo == HPF) PriQ = PCBPriQ_init(); 
     if(algo == SRTN) SRTN_Queue = SRTN_PriQueue_init(100);
+    if(algo == RR) { 
+        queue = malloc(sizeof(CircularQueue)); 
+        queue->front = -1; 
+        queue->rear = -1; 
+        pcbtempRR= NULL;
+    } 
+
     printf("PCB Q init completed\n");
 
     FILE *fp = fopen("schedulerlog.txt", "w");
@@ -298,37 +299,38 @@ int main(int argc, char *argv[])
     bool end = 0;
     int current_time = getClk();
     int last_time = current_time;
-
     while(!end || readyQNotEmpty(algo)) { 
-        current_time = getClk();
 
-        if(current_time > last_time){
-            last_time = current_time;
-            // Check for new processes only when needed
-            end = end ? end : checkifEnd(MessageQueueId);
-            //printf("End = %d", end);
-            checkforNewProcesses(MessageQueueId, algo);
-            // Only run algorithm iterations when the clock ticks
-            //run the algorithms (one iteration)
-            switch (algo){
-                case HPF:
-                    HPF_Iter(fp, fp2);
-                    break;
-                case SRTN:
-                    SRTN_func(fp);
-                    break;
-                case RR:
-                    printf("Round Robin\n");
-                    break;
-                }
-        }
-        }
+        // Check for new processes only when needed
+        end = end ? end : checkifEnd(MessageQueueId);
+        //printf("End = %d", end);
+        checkforNewProcesses(MessageQueueId, algo);
+
+        // Only run algorithm iterations when the clock ticks
+        //run the algorithms (one iteration)
+        switch (algo){
+            case HPF:
+                HPF_Iter(fp, fp2);
+                break;
+            case SRTN:
+                SRTN_func(fp, fp2);
+                break;
+            case RR:
+                roundRobin(quantum, fp);
+                break;
+            }
+            if (algo == HPF)
+            {
+                //PCBPriQ_printGivenIDs(PriQ);
+            }
+}
     
     schedulerPrefPrint(fp2); //print final results in pref file
     printf("done");
     fclose(fp);
     fclose(fp2);
     free(PriQ);
+    free(queue);
     SRTN_PriQueue_free(SRTN_Queue);
     destroyClk(true);
     exit(0);
