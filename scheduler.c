@@ -298,6 +298,7 @@ int main(int argc, char *argv[])
     bool end = 0;
     int current_time = getClk();
     int last_time = current_time;
+
     while(!end || readyQNotEmpty(algo)) { 
         current_time = getClk();
 
@@ -321,12 +322,6 @@ int main(int argc, char *argv[])
                     break;
                 }
         }
-            // if (algo == HPF)
-            // {
-            //     //PCBPriQ_printGivenIDs(PriQ);
-            // }
-            
-            // if(algo != HPF) sleep(1); //to be changed
         }
     
     schedulerPrefPrint(fp2); //print final results in pref file
