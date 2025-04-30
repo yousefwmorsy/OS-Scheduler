@@ -10,6 +10,8 @@ PCBPriQ* PriQ; //ready queue for HPF
 SRTN_PriQueue* SRTN_Queue; //Priority Queue for SRTN
 CircularQueue* queue; //queue for RR
 pcb* pcbtempRR; //process that is running now
+CircularQueue* queue; //queue for RR
+pcb* pcbtempRR; //process that is running now
 
 bool readyQNotEmpty(int algo){
     switch (algo){
@@ -299,8 +301,6 @@ int main(int argc, char *argv[])
     FILE *fp2 = fopen("schedulerPref.txt", "w");
 
     bool end = 0;
-    int current_time = getClk();
-    int last_time = current_time;
     while(!end || readyQNotEmpty(algo)) { 
 
         // Check for new processes only when needed
@@ -316,6 +316,7 @@ int main(int argc, char *argv[])
                 break;
             case SRTN:
                 SRTN_func(fp, fp2);
+                sleep(1); 
                 break;
             case RR:
                 roundRobin(quantum, fp);
