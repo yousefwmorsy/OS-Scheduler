@@ -167,8 +167,9 @@ void SRTN_func (FILE *fp, FILE *fp2){
 
 void HPF_Iter(FILE *fp, FILE *fp2){
     pcb* head = PCBPriQ_peek(PriQ);
+    int currentTime = getClk();
         if (head == NULL) {
-        printf("No process in the queue to run\n");
+        //printf("No process in the queue to run\n");
         IdleTime++;
         return;
     }
@@ -195,6 +196,7 @@ void HPF_Iter(FILE *fp, FILE *fp2){
         //while(curr == getClk()){}
         //printf("whoo");
         // Only decrement the remaining time once per clock tick
+        while(currentTime + 1 > getClk()){}
         head->remainingTime--;
         printf("Running Process %d at %d, remaining time: %d\n", head->givenid, getClk(), head->remainingTime);
     }
@@ -291,7 +293,7 @@ int main(int argc, char *argv[])
     //initialise queues to be used in algorithm iterations
     if(algo == HPF) PriQ = PCBPriQ_init(); 
     if(algo == SRTN) SRTN_Queue = SRTN_PriQueue_init(100);
-    printf("PCB init completed\n");
+    printf("PCB Q init completed\n");
 
     FILE *fp = fopen("schedulerlog.txt", "w");
     FILE *fp2 = fopen("schedulerPref.txt", "w");
@@ -318,10 +320,10 @@ int main(int argc, char *argv[])
             }
             if (algo == HPF)
             {
-                PCBPriQ_printGivenIDs(PriQ);
+                //PCBPriQ_printGivenIDs(PriQ);
             }
             
-            sleep(1);
+            if(algo != HPF) sleep(1); //to be changed
         }
     
     schedulerPrefPrint(fp2); //print final results in pref file
