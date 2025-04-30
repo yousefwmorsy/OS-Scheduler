@@ -19,7 +19,7 @@ AllProcessesQueue *SentQueue;
 int main(int argc, char *argv[])
 {
     signal(SIGINT, clearResources);
-    
+
     // TODO Initialization
     // 1. Read the input files.
     FILE *inputfile = fopen("processes.txt", "r");
@@ -28,15 +28,14 @@ int main(int argc, char *argv[])
         printf("Error opening file");
     }
 
-    //dynamic allocation of the queue
+    // dynamic allocation of the queue
     queue = malloc(sizeof(AllProcessesQueue));
-
 
     char line[MAX_LINE_LENGTH];
     queue->frontptr = NULL;
     queue->backptr = NULL;
 
-    //reads the file line by line and creates a process node for each line and enqueues it to the queue
+    // reads the file line by line and creates a process node for each line and enqueues it to the queue
     while (fgets(line, sizeof(line), inputfile))
     {
 
@@ -87,9 +86,9 @@ int main(int argc, char *argv[])
     // Convert algorithm and time quantum to strings
     char algo_str[10];
     sprintf(algo_str, "%d", algo);
-    
+
     char quantum_str[10] = "0"; // Default value
-    if (algo == 2) // If RR is selected
+    if (algo == 2)              // If RR is selected
     {
         sprintf(quantum_str, "%d", timeQuantum);
     }
@@ -107,21 +106,20 @@ int main(int argc, char *argv[])
     // 4. Use this function after creating the clock process to initialize clock
     initClk();
 
-
     // To get time use this
     int x = getClk();
     //  printf("current time is %d\n", x);
     printf("current time is %d\n", x);
     // TODO Generation Main Loop
 
-    
     // 5. Create a data structure for processes and provide it with its parameters.
     // created the queue in step 1
 
     // 6. Send the information to the scheduler at the appropriate time.
     int MessageQueueId = msgget(MSG_KEY, IPC_CREAT | 0666);
     printf("Message queue ID (gen): %d\n", MessageQueueId);
-    if (MessageQueueId == -1) {
+    if (MessageQueueId == -1)
+    {
         perror("Failed to create/get message queue");
         exit(1);
     }
@@ -132,9 +130,9 @@ int main(int argc, char *argv[])
     SentQueue->backptr = NULL;
     while (!isEmpty(queue))
     {
-        //for debugging purposes
-        // int x = getClk();
-        // printf("current time is %d\n", x);
+        // for debugging purposes
+        //  int x = getClk();
+        //  printf("current time is %d\n", x);
 
         Curr = dequeue(queue);
         enqueue(SentQueue, Curr);
@@ -153,13 +151,14 @@ int main(int argc, char *argv[])
             printf("msgsnd failed");
             exit(1);
         }
+        kill(scheduler, SIGUSR1); // Notify the scheduler to receive the message
         printf("Sent MSG at %d \n", getClk());
     }
     // Send a message to indicate that all processes have been sent to the scheduler
     ProcessMsg msg;
     msg.mtype = 2;
-    msgsnd(MessageQueueId, &msg, sizeof(ProcessMsg) - sizeof(long), 0) ;
-    
+    msgsnd(MessageQueueId, &msg, sizeof(ProcessMsg) - sizeof(long), 0);
+
     printf("All processes sent to the scheduler\n");
 
     waitpid(scheduler, NULL, 0);
@@ -167,9 +166,12 @@ int main(int argc, char *argv[])
 
     // Clear the message queue
     struct msqid_ds buf;
-    if (msgctl(MessageQueueId, IPC_RMID, &buf) == -1) {
+    if (msgctl(MessageQueueId, IPC_RMID, &buf) == -1)
+    {
         perror("Failed to clear message queue");
-    } else {
+    }
+    else
+    {
         printf("Message queue cleared successfully\n");
     }
 
