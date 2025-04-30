@@ -10,6 +10,8 @@ PCBPriQ* PriQ; //ready queue for HPF
 SRTN_PriQueue* SRTN_Queue; //Priority Queue for SRTN
 CircularQueue* queue; //queue for RR
 pcb* pcbtempRR; //process that is running now
+CircularQueue* queue; //queue for RR
+pcb* pcbtempRR; //process that is running now
 
 bool readyQNotEmpty(int algo){
     switch (algo){
