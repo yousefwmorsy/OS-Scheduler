@@ -1,9 +1,9 @@
 #include "headers.h"
 #include <math.h>
 #define maxProcess 1000 // will change and it later and probably remove it from the code 
-float WTA; // waiting time of the process
-int WT; // turnaround time of the process
-int TotalTime; // execution time of the process
+float WTA = 0; // waiting time of the process
+int WT = 0; // turnaround time of the process
+int TotalTime = 0; // execution time of the process
 int countGlobal = 0; // number of processes in the system
 int IdleTime = 0;
 PCBPriQ* PriQ; //ready queue for HPF
@@ -21,7 +21,7 @@ bool readyQNotEmpty(int algo){
             return (SRTN_Queue->size != 0);
             break;
         case RR:
-            
+            return (isEmptyCir(queue) != 1);
             break;
     }
 }
@@ -39,6 +39,10 @@ void schedulerlogPrint (FILE *fp, int currentTime,pcb *pcb, char status [])
     int totalTime = pcb->executionTime;
     int remainingTime = pcb->remainingTime;
     int waitingTime = pcb->waitingTime;
+    if(strcmp(status, "started") == 0){
+    WT+= waitingTime;
+    TotalTime+= totalTime;
+}
     
     if (strcmp(status, "finished") == 0)
     {
@@ -109,15 +113,18 @@ void checkforNewProcesses(int msg_q, int algo){
             //add to suitable ds
             switch(algo){
                 case HPF:
+                countGlobal++;
                     PCBPriQ_enqueue(PriQ, obj);
                     printf("Enqueued process ID=%d into priority queue\n", obj->givenid);
                     break;
                 case SRTN:
                     printf("SRTN: Entered!!");
+                    countGlobal++;
                     SRTN_PriQueue_insert(SRTN_Queue, obj);
                     printf("Enqueued process ID=%d into SRTN queue\n", obj->givenid);
                     break;
                 case RR:
+                countGlobal++;
                 RR_insert(queue, obj ); //pcbtempRR is the process that is running now
                     break;
             }
@@ -146,8 +153,6 @@ void SRTN_func (FILE *fp, FILE *fp2){
     //3. Start The Process if its first time to start
     if(current_process->remainingTime == current_process->executionTime){
         schedulerlogPrint(fp, getClk(), current_process, "started");
-        countGlobal++; // use it with start for both of them
-        TotalTime+= current_process->remainingTime;
     }
 
     //4. Increment the waiting time of the other Processes
@@ -164,7 +169,6 @@ void SRTN_func (FILE *fp, FILE *fp2){
         schedulerlogPrint(fp, getClk(), current_process, "finished"); 
 
         int turn_around_time = getClk() - current_process->arrivalTime;
-        WT+= current_process->waitingTime;
         
         kill(current_process->systemid, SIGKILL); //temporary for testing purposes
         SRTN_PriQueue_pop(SRTN_Queue);
@@ -214,9 +218,9 @@ void HPF_Iter(FILE *fp, FILE *fp2){
 
 void roundRobin(int quantum,FILE *fp) //assuming I am going to get a array of processes this assumption might not be true 
 {
-    int alldone = 0;
-    int countDone = 0;
-    pcb *pcbtempRR = NULL;
+    pcbtempRR = NULL;
+    
+    
     //printf("Round Robin started\n"); //remove it later
         pcbtempRR = dequeueCir(queue);
         if (pcbtempRR != NULL)
@@ -228,7 +232,6 @@ void roundRobin(int quantum,FILE *fp) //assuming I am going to get a array of pr
             pcbtempRR->waitingTime = currentTime - pcbtempRR->arrivalTime; // Waiting time of the process
             kill(pcbtempRR->systemid, SIGCONT);
             schedulerlogPrint(fp, currentTime, pcbtempRR, "started"); 
-            WT+= pcbtempRR->waitingTime;
         }
         
         else
@@ -248,14 +251,13 @@ void roundRobin(int quantum,FILE *fp) //assuming I am going to get a array of pr
             else
             {
                 int finishTime = currentTime + pcbtempRR->remainingTime; // End time of the process
-                while(currentTime + pcbtempRR->remainingTime  > getClk()){}
+                while(currentTime + pcbtempRR->remainingTime > getClk()){}
                 pcbtempRR->remainingTime = 0;
                 kill(pcbtempRR->systemid, SIGKILL);
                 schedulerlogPrint(fp,finishTime , pcbtempRR,"finished");
                 // the function that will be traded for shawarma 
                 free(pcbtempRR);
                 pcbtempRR = NULL;
-                countDone++;
             }
         }
 
