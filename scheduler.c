@@ -341,6 +341,7 @@ int main(int argc, char *argv[])
     printf("PCB Q init completed\n");
 
     FILE *fp = fopen("schedulerlog.txt", "w");
+    fprintf(fp, "At time  x process y state arr w total z remain y wait k\n");
     FILE *fp2 = fopen("schedulerPref.txt", "w");
 
     bool end = 0;
