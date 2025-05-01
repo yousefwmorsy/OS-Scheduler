@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
     char algo_str[10];
     sprintf(algo_str, "%d", algo);
 
-    char quantum_str[10] = "0"; // Default value
+    char quantum_str[10] = "1"; // Default value
     if (algo == 2)              // If RR is selected
     {
         sprintf(quantum_str, "%d", timeQuantum);

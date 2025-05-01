@@ -227,7 +227,10 @@ int isEmptyCir(CircularQueue *q)
     // If the front hasn't been set, the queue is empty
     return q->front == -1;
 }
-
+int nextIndex(int i)
+{
+    return (i + 1) % CirQ_SIZE;
+}
 // Function to enqueue (insert) an element
 void enqueueCir(CircularQueue *q, pcb *data)
 {
