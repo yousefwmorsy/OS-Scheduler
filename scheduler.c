@@ -12,6 +12,7 @@ CircularQueue *queue;      // queue for RR
 pcb *pcbtempRR;            // process that is running now
 CircularQueue *queue;      // queue for RR
 pcb *pcbtempRR;            // process that is running now
+float * WTAs; // Array to store WTA values
 
 enum schedulealgo algo; // algorithm type
 // SRTN_PriQueue *SRTN_Queue; // Priority Queue for SRTN
@@ -57,6 +58,9 @@ void schedulerlogPrint(FILE *fp, int currentTime, pcb *pcb, char status[])
         int turnaroundTime = currentTime - arrivalTime;
         float weightedTA = (float)turnaroundTime / totalTime;
         WTA += weightedTA;
+        WTAs[countGlobal] = weightedTA; // Store WTA value in the array
+        countGlobal++; // Increment the count of processes
+        //printf("Count: %d\n", countGlobal);
         fprintf(fp, "At time  %d process %d %s arr %d total %d remain %d wait %d TA %d WTA %.2f\n", currentTime, processID, status, arrivalTime, totalTime, remainingTime, waitingTime, turnaroundTime, weightedTA);
         printf("At time  %d process %d %s arr %d total %d remain %d wait %d TA %d WTA %.2f\n", currentTime, processID, status, arrivalTime, totalTime, remainingTime, waitingTime, turnaroundTime, weightedTA);
     }
@@ -73,12 +77,24 @@ void schedulerPrefPrint(FILE *fp)
     float utilization = (TotalTime / (float)currentTime) * 100;
     float averageWT = (float)WT / countGlobal;
     float averageWTA = (float)WTA / countGlobal;
+    
+    float stdWTA = 0;
+    for (int i = 0; i < countGlobal; i++)
+    {
+        //printf("%.2f - %.2f\n", averageWTA, WTAs[i]);
+        stdWTA += pow((averageWTA) - (WTAs[i]), 2);
+    }
+    stdWTA = sqrt(stdWTA / countGlobal);
     averageWT = roundf(averageWT * 100) / 100;
     averageWTA = roundf(averageWTA * 100) / 100;
-    fprintf(fp, "CPU utilization = %.0f%%\n", utilization);
+    utilization = roundf(utilization * 100) / 100;
+    fprintf(fp, "CPU utilization = %.2f%%\n", utilization);
     fprintf(fp, "Avg WTA = %.2f\n", averageWTA);
-    fprintf(fp, "Avg waiting = %.2f\n", averageWT);
-    // fprintf(fp,"Std WTA = %.2f\n", stdWTA);
+    fprintf(fp, "Avg Waiting = %.2f\n", averageWT);
+    
+    
+    stdWTA = roundf(stdWTA * 100) / 100;
+    fprintf(fp,"Std WTA = %.2f\n", stdWTA);
 }
 
 bool checkifEnd(int msg_q)
@@ -135,18 +151,15 @@ void checkforNewProcesses(int msg_q, int algo)
             switch (algo)
             {
             case HPF:
-                countGlobal++;
                 PCBPriQ_enqueue(PriQ, obj);
                 printf("Enqueued process ID=%d into priority queue\n", obj->givenid);
                 break;
             case SRTN:
                 printf("SRTN: Entered!!");
-                countGlobal++;
                 SRTN_PriQueue_insert(SRTN_Queue, obj);
                 printf("Enqueued process ID=%d into SRTN queue\n", obj->givenid);
                 break;
             case RR:
-                countGlobal++;
                 RR_insert(queue, obj); // pcbtempRR is the process that is running now
                 break;
             }
@@ -307,6 +320,7 @@ void recieveMess(int signum)
 
 int main(int argc, char *argv[])
 {
+    WTAs = malloc(sizeof(float) * maxProcess);
     initClk();
     // TODO implement the scheduler :)
     // upon termination release the clock resources.
