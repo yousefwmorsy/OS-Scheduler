@@ -13,7 +13,7 @@ CircularQueue *queue;      // queue for RR
 pcb *pcbtempRR;            // process that is running now
 CircularQueue *queue;      // queue for RR
 pcb *pcbtempRR;            // process that is running now
-float * WTAs; // Array to store WTA values
+float *WTAs;               // Array to store WTA values
 FILE *fp;                  // file pointer for logging
 enum schedulealgo algo;    // algorithm type
 int quantum;               // quantum for RR
@@ -36,12 +36,12 @@ bool readyQNotEmpty(int algo)
     }
 }
 
-void schedulerlogPrint(FILE *fp, int currentTime, pcb *pcb, char status[])
+void schedulerlogPrint(FILE *fip, int currentTime, pcb *pcb, char status[])
 // AHMED ABD-ELjALeel!!!!!!!! please use this and don't waste your time and copy the arguments from the use of the function in roundRobin so you don't waste time filling the arguments
 {
-    if (fp == NULL)
+    if (fip == NULL)
     {
-        printf("Error opening file!\n");
+        printf("Error opening file  %s!!!!\n", status);
         return;
     }
     int processID = pcb->givenid;
@@ -61,14 +61,14 @@ void schedulerlogPrint(FILE *fp, int currentTime, pcb *pcb, char status[])
         float weightedTA = (float)turnaroundTime / totalTime;
         WTA += weightedTA;
         WTAs[countGlobal] = weightedTA; // Store WTA value in the array
-        countGlobal++; // Increment the count of processes
-        //printf("Count: %d\n", countGlobal);
-        fprintf(fp, "At time  %d process %d %s arr %d total %d remain %d wait %d TA %d WTA %.2f\n", currentTime, processID, status, arrivalTime, totalTime, remainingTime, waitingTime, turnaroundTime, weightedTA);
+        countGlobal++;                  // Increment the count of processes
+        // printf("Count: %d\n", countGlobal);
+        fprintf(fip, "At time  %d process %d %s arr %d total %d remain %d wait %d TA %d WTA %.2f\n", currentTime, processID, status, arrivalTime, totalTime, remainingTime, waitingTime, turnaroundTime, weightedTA);
         printf("At time  %d process %d %s arr %d total %d remain %d wait %d TA %d WTA %.2f\n", currentTime, processID, status, arrivalTime, totalTime, remainingTime, waitingTime, turnaroundTime, weightedTA);
     }
     else
     {
-        fprintf(fp, "At time  %d process %d %s arr %d total %d remain %d wait %d \n", currentTime, processID, status, arrivalTime, totalTime, remainingTime, waitingTime);
+        fprintf(fip, "At time  %d process %d %s arr %d total %d remain %d wait %d \n", currentTime, processID, status, arrivalTime, totalTime, remainingTime, waitingTime);
         printf("At time  %d process %d %s arr %d total %d remain %d wait %d \n", currentTime, processID, status, arrivalTime, totalTime, remainingTime, waitingTime);
     }
 }
@@ -79,11 +79,11 @@ void schedulerPrefPrint(FILE *fp)
     float utilization = (TotalTime / (float)currentTime) * 100;
     float averageWT = (float)WT / countGlobal;
     float averageWTA = (float)WTA / countGlobal;
-    
+
     float stdWTA = 0;
     for (int i = 0; i < countGlobal; i++)
     {
-        //printf("%.2f - %.2f\n", averageWTA, WTAs[i]);
+        // printf("%.2f - %.2f\n", averageWTA, WTAs[i]);
         stdWTA += pow((averageWTA) - (WTAs[i]), 2);
     }
     stdWTA = sqrt(stdWTA / countGlobal);
@@ -93,10 +93,9 @@ void schedulerPrefPrint(FILE *fp)
     fprintf(fp, "CPU utilization = %.2f%%\n", utilization);
     fprintf(fp, "Avg WTA = %.2f\n", averageWTA);
     fprintf(fp, "Avg Waiting = %.2f\n", averageWT);
-    
-    
+
     stdWTA = roundf(stdWTA * 100) / 100;
-    fprintf(fp,"Std WTA = %.2f\n", stdWTA);
+    fprintf(fp, "Std WTA = %.2f\n", stdWTA);
 }
 
 bool checkifEnd(int msg_q)
@@ -180,27 +179,24 @@ void checkforNewProcesses(int msg_q, int algo)
         }
     }
 }
-
-void SRTN_func(FILE *fp, FILE *fp2, int clk)
+void SRTN_func(FILE *fp, FILE *fp2)
 {
-    while (clk + 1 > getClk())
-    {
-    }
+    int currentTime = getClk();
 
     // 1.Check if any process enqueued in the Queue or not
     if (SRTN_Queue->size == 0)
     {
-        printf("SRTN: No process in the Queue yet...\n");
+        // printf("SRTN: No process in the Queue yet...\n");
         IdleTime++;
         return;
     }
+
     // 2. Peek the SRTN Process in the Priority Queue
-    pcb *current_process = SRTN_PriQueue_pop(SRTN_Queue);
+    pcb *current_process = SRTN_PriQueue_peek(SRTN_Queue);
 
     // 3. Start The Process if its first time to start
     if (current_process->remainingTime == current_process->executionTime)
     {
-
         schedulerlogPrint(fp, getClk(), current_process, "started");
     }
 
@@ -212,34 +208,33 @@ void SRTN_func(FILE *fp, FILE *fp2, int clk)
     }
 
     // 5. Decrement the remaining time of the peeked Process
-    if (current_process->remainingTime > 0)
+    if (current_process && current_process->remainingTime > 0)
     {
-        current_process->remainingTime--;
-
-        kill(current_process->systemid, SIGCONT); // run the process
-        printf("SRTN: Reinserted Process %d Remaining Time %d\n", current_process->givenid, current_process->remainingTime);
-        SRTN_PriQueue_insert(SRTN_Queue, current_process); // Reinsert the process into the queue
+        // run the process
+        if (kill(current_process->systemid, SIGCONT) != -1)
+            current_process->remainingTime--;
     }
-    else
+
+    while (currentTime + 1 > getClk())
     {
-        printf("SRTN: Process %d finitooeooe at %d\n", current_process->givenid, getClk());
-        kill(current_process->systemid, SIGCONT); // run the process
-
-        // 7. Print the curent states of the current moment of the process
-        // printf("SRTN: Running Process %d at %d, remsaining time: %d\n", current_process->givenid, getClk(), current_process->remainingTime);
-
-        // kill(current_process->systemid, SIGSTOP); // Stop the process
     }
     // 6. Check if its fished or not, If true pop it and kill it.
-    // if (current_process->remainingTime <= 0)
-    // {
-    //     // printf("SRTN: Process %d Terminated at %d\n", current_process->givenid, getClk());
-    //     // kill(current_process->systemid, SIGCONT); // run the process one last time to finish it
-    //     int turn_around_time = getClk() - current_process->arrivalTime;
+    if (current_process && current_process->remainingTime == 0)
+    {
+        // printf("SRTN: Process %d Terminated at %d\n", current_process->givenid, getClk());
+        // schedulerlogPrint(fp, getClk(), current_process, "finished");
+        kill(current_process->systemid, SIGCONT); // run the process
 
-    //     // kill(current_process->systemid, SIGKILL); // temporary for testing purposes
-    //     // SRTN_PriQueue_pop(SRTN_Queue);
-    // }
+        // int turn_around_time = getClk() - current_process->arrivalTime;
+
+        // kill(current_process->systemid, SIGKILL); //temporary for testing purposes
+        // SRTN_PriQueue_pop(SRTN_Queue);
+    }
+    else if (current_process)
+    {
+        // 7. Print the curent states of the current moment of the process
+        printf("SRTN: Running Process %d at %d, remsaining time: %d\n", current_process->givenid, getClk(), current_process->remainingTime);
+    }
 }
 
 void HPF_Iter(FILE *fp, FILE *fp2)
@@ -379,23 +374,25 @@ bool findProcessByPid(pid_t pid)
             if (SRTN_Queue->Process[i]->systemid == pid)
             {
                 schedulerlogPrint(fp, getClk(), SRTN_Queue->Process[i], "finished");
+                printf("Process with PID %d done and finished\n", pid);
 
-                // Free the pcb if owned, optional:
-                printf("Process with PID %d donee and finished and perfectoooo \n", pid);
-
-                // Shift elements to the left
+                // Free the process
                 free(SRTN_Queue->Process[i]);
+                SRTN_Queue->Process[i] = NULL; // Clear the pointer
+                // Shift elements to the left
                 for (int j = i; j < SRTN_Queue->size - 1; j++)
                 {
                     SRTN_Queue->Process[j] = SRTN_Queue->Process[j + 1];
                 }
 
+                // Clear the last pointer and decrement size
+                SRTN_Queue->Process[SRTN_Queue->size] = NULL;
                 SRTN_Queue->size--;
+
                 return true;
             }
         }
         return false; // ID not found
-
         break;
     case RR:
 
@@ -481,7 +478,7 @@ void signalHandler(int signum)
         if (terminatedPid == 0)
         {
             // No child exited yet — sleep briefly to avoid CPU spinning
-            usleep(10000); // 10 ms
+            // usleep(100 * 100); // 10 ms
         }
     } while (terminatedPid == 0);
 
@@ -546,7 +543,7 @@ int main(int argc, char *argv[])
 
     printf("PCB Q init completed\n");
 
-    FILE *fp = fopen("schedulerlog.txt", "w");
+    fp = fopen("schedulerlog.txt", "w");
     fprintf(fp, "At time  x process y state arr w total z remain y wait k\n");
     FILE *fp2 = fopen("schedulerPref.txt", "w");
 
@@ -555,13 +552,13 @@ int main(int argc, char *argv[])
     {
 
         // Check for new processes only when needed
+        int lastClk = getClk();
         end = end ? end : checkifEnd(MessageQueueId);
         // printf("End = %d", end);
         checkforNewProcesses(MessageQueueId, algo);
 
         // Only run algorithm iterations when the clock ticks
         // run the algorithms (one iteration)
-        int lastClk = getClk();
 
         switch (algo)
         {
@@ -569,7 +566,8 @@ int main(int argc, char *argv[])
             HPF_Iter(fp, fp2);
             break;
         case SRTN:
-            SRTN_func(fp, fp2, lastClk);
+            SRTN_func(fp, fp2);
+            // sleep(1); // Sleep for a short duration to avoid busy waiting
             break;
         case RR:
             roundRobin(quantum, fp);

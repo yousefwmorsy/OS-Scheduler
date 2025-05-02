@@ -8,8 +8,8 @@ void handler(int signum)
 {
     if (remainingtime <= quantum)
     {
-        printf("Processssssssssss %d terminated at time %d\n", PID, getClk());
         kill(getppid(), SIGUSR2); // Send SIGUSR2 to the Scheduer
+        printf("Processssssssssss %d terminated at time %d\n", PID, getClk());
         exit(0);
     }
     else
