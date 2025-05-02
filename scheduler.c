@@ -90,6 +90,7 @@ void schedulerPrefPrint(FILE *fp)
     averageWT = roundf(averageWT * 100) / 100;
     averageWTA = roundf(averageWTA * 100) / 100;
     utilization = roundf(utilization * 100) / 100;
+    printf("Total Time = %d, Running Time = %d\n", currentTime, TotalTime);
     fprintf(fp, "CPU utilization = %.2f%%\n", utilization);
     fprintf(fp, "Avg WTA = %.2f\n", averageWTA);
     fprintf(fp, "Avg Waiting = %.2f\n", averageWT);
@@ -206,6 +207,10 @@ void SRTN_func(FILE *fp, FILE *fp2)
         if (SRTN_Queue->Process[i] != current_process)
             SRTN_Queue->Process[i]->waitingTime++; // Here it will increment the waiting time of any process which now doesn't take the process.
     }
+    
+    while (currentTime + 1 > getClk())
+    {
+    }
 
     // 5. Decrement the remaining time of the peeked Process
     if (current_process && current_process->remainingTime > 0)
@@ -215,22 +220,19 @@ void SRTN_func(FILE *fp, FILE *fp2)
             current_process->remainingTime--;
     }
 
-    while (currentTime + 1 > getClk())
-    {
-    }
     // 6. Check if its fished or not, If true pop it and kill it.
-    if (current_process && current_process->remainingTime == 0)
-    {
-        // printf("SRTN: Process %d Terminated at %d\n", current_process->givenid, getClk());
-        // schedulerlogPrint(fp, getClk(), current_process, "finished");
-        kill(current_process->systemid, SIGCONT); // run the process
+    // if (current_process && current_process->remainingTime == 0)
+    // {
+    //     // printf("SRTN: Process %d Terminated at %d\n", current_process->givenid, getClk());
+    //     // schedulerlogPrint(fp, getClk(), current_process, "finished");
+    //     kill(current_process->systemid, SIGCONT); // run the process
 
-        // int turn_around_time = getClk() - current_process->arrivalTime;
+    //     // int turn_around_time = getClk() - current_process->arrivalTime;
 
-        // kill(current_process->systemid, SIGKILL); //temporary for testing purposes
-        // SRTN_PriQueue_pop(SRTN_Queue);
-    }
-    else if (current_process)
+    //     // kill(current_process->systemid, SIGKILL); //temporary for testing purposes
+    //     // SRTN_PriQueue_pop(SRTN_Queue);
+    // }
+    if (current_process)
     {
         // 7. Print the curent states of the current moment of the process
         printf("SRTN: Running Process %d at %d, remsaining time: %d\n", current_process->givenid, getClk(), current_process->remainingTime);
