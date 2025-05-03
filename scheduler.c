@@ -16,8 +16,9 @@ float *WTAs;               // Array to store WTA values
 FILE *fp;                  // file pointer for logging
 enum schedulealgo algo;    // algorithm type
 int quantum;               // quantum for RR
-// SRTN_PriQueue *SRTN_Queue; // Priority Queue for SRTN
 int MessageQueueId;
+
+
 bool readyQNotEmpty(int algo)
 {
     switch (algo)
@@ -149,6 +150,7 @@ void checkforNewProcesses(int msg_q, int algo)
                 perror("Memory allocation for PCB failed\n");
                 return;
             }
+            if(pid < 0) return;
             pcb tempPcb = pcb_init(&msg, pid);
             memcpy(obj, &tempPcb, sizeof(pcb));
 
@@ -172,6 +174,7 @@ void checkforNewProcesses(int msg_q, int algo)
         }
     }
 }
+
 void SRTN_func(FILE *fp, FILE *fp2)
 {
     int currentTime = getClk();
@@ -179,25 +182,24 @@ void SRTN_func(FILE *fp, FILE *fp2)
     // 1.Check if any process enqueued in the Queue or not
     if (SRTN_Queue->size == 0)
     {
-        // printf("SRTN: No process in the Queue yet...\n");
         IdleTime++;
         return;
     }
 
     // 2. Peek the SRTN Process in the Priority Queue
     pcb *current_process = SRTN_PriQueue_peek(SRTN_Queue);
+    if (current_process == NULL || current_process->remainingTime <= 0) {
+        return;  // Skip invalid processes
+    }
 
     // 3. Start The Process if its first time to start
-    if (current_process->remainingTime == current_process->executionTime)
-    {
-        schedulerlogPrint(fp, getClk(), current_process, "started");
-    }
+    if (current_process->remainingTime == current_process->executionTime)  schedulerlogPrint(fp, getClk(), current_process, "started");
 
     // 4. Increment the waiting time of the other Processes
     for (int i = 0; i < SRTN_Queue->size; i++)
     {
-        if (SRTN_Queue->Process[i] != current_process)
-            SRTN_Queue->Process[i]->waitingTime++; // Here it will increment the waiting time of any process which now doesn't take the process.
+        if (SRTN_Queue->Process[i] != current_process) SRTN_Queue->Process[i]->waitingTime++; // Here it will increment the waiting time of any process which now doesn't take the process.
+
     }
     
     while (currentTime + 1 > getClk())
@@ -205,30 +207,11 @@ void SRTN_func(FILE *fp, FILE *fp2)
     }
 
     // 5. Decrement the remaining time of the peeked Process
-    if (current_process && current_process->remainingTime > 0)
-    {
-        // run the process
-        if (kill(current_process->systemid, SIGCONT) != -1)
-            current_process->remainingTime--;
-    }
+    if (current_process && current_process->remainingTime > 0 && kill(current_process->systemid, SIGCONT) != -1) current_process->remainingTime--;
 
-    // 6. Check if its fished or not, If true pop it and kill it.
-    // if (current_process && current_process->remainingTime == 0)
-    // {
-    //     // printf("SRTN: Process %d Terminated at %d\n", current_process->givenid, getClk());
-    //     // schedulerlogPrint(fp, getClk(), current_process, "finished");
-    //     kill(current_process->systemid, SIGCONT); // run the process
-
-    //     // int turn_around_time = getClk() - current_process->arrivalTime;
-
-    //     // kill(current_process->systemid, SIGKILL); //temporary for testing purposes
-    //     // SRTN_PriQueue_pop(SRTN_Queue);
-    // }
-    if (current_process)
-    {
-        // 7. Print the curent states of the current moment of the process
-        printf("SRTN: Running Process %d at %d, remsaining time: %d\n", current_process->givenid, getClk(), current_process->remainingTime);
-    }
+    // 7. Print the curent states of the current moment of the process
+    if (current_process) printf("SRTN: Running Process %d at %d, remsaining time: %d\n", current_process->givenid, getClk(), current_process->remainingTime);
+        
 }
 
 void HPF_Iter(FILE *fp, FILE *fp2)
@@ -268,6 +251,7 @@ void HPF_Iter(FILE *fp, FILE *fp2)
         // printf("Running Process %d at %d, remaining time: %d\n", head->givenid, getClk(), head->remainingTime);
     }
 }
+
 void roundRobin(int quantum, FILE *fp) // assuming I am going to get a array of processes this assumption might not be true
 {
     pcbtempRR = NULL;
@@ -465,11 +449,13 @@ bool findProcessByPid(pid_t pid)
         break;
     }
 }
+
 void recieveMess(int signum)
 {
     printf("Received signal to check for new processes\n");
     checkforNewProcesses(MessageQueueId, algo);
 }
+
 void signalHandler(int signum)
 {
     printf("Received signal that a child terminated \n");
@@ -511,6 +497,7 @@ void signalHandler(int signum)
         perror("Error in waitpid");
     }
 }
+
 int main(int argc, char *argv[])
 {
     WTAs = malloc(sizeof(float) * maxProcess);
@@ -559,7 +546,6 @@ int main(int argc, char *argv[])
         // Check for new processes only when needed
         int lastClk = getClk();
         end = end ? end : checkifEnd(MessageQueueId);
-        // printf("End = %d", end);
         checkforNewProcesses(MessageQueueId, algo);
 
         // Only run algorithm iterations when the clock ticks
@@ -579,11 +565,7 @@ int main(int argc, char *argv[])
             break;
         }
     }
-
-    if (algo == HPF)
-    {
-        // PCBPriQ_printGivenIDs(PriQ);
-    }
+    readyQNotEmpty(algo);
 
     schedulerPrefPrint(fp2); // print final results in pref file
     printf("done");
