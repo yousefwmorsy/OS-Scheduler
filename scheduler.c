@@ -5,14 +5,13 @@ float WTA = 0;          // waiting time of the process
 int WT = 0;             // turnaround time of the process
 int TotalTime = 0;      // execution time of the process
 int countGlobal = 0;    // number of processes in the system
+int countfinished = 0;
 int IdleTime = 0;
-bool InsideRR = false;     // to check if the process is inside the round robin or not
+bool allsent = false;
 PCBPriQ *PriQ;             // ready queue for HPF
 SRTN_PriQueue *SRTN_Queue; // Priority Queue for SRTN
 CircularQueue *queue;      // queue for RR
-pcb *pcbtempRR;            // process that is running now
-CircularQueue *queue;      // queue for RR
-pcb *pcbtempRR;            // process that is running now
+pcb *pcbtempRR;          // process that is running now
 float *WTAs;               // Array to store WTA values
 FILE *fp;                  // file pointer for logging
 enum schedulealgo algo;    // algorithm type
@@ -57,11 +56,11 @@ void schedulerlogPrint(FILE *fip, int currentTime, pcb *pcb, char status[])
 
     if (strcmp(status, "finished") == 0)
     {
+        countfinished++;
         int turnaroundTime = currentTime - arrivalTime;
         float weightedTA = (float)turnaroundTime / totalTime;
         WTA += weightedTA;
         WTAs[countGlobal] = weightedTA; // Store WTA value in the array
-        countGlobal++;                  // Increment the count of processes
         // printf("Count: %d\n", countGlobal);
         fprintf(fip, "At time  %d process %d %s arr %d total %d remain %d wait %d TA %d WTA %.2f\n", currentTime, processID, status, arrivalTime, totalTime, remainingTime, waitingTime, turnaroundTime, weightedTA);
         printf("At time  %d process %d %s arr %d total %d remain %d wait %d TA %d WTA %.2f\n", currentTime, processID, status, arrivalTime, totalTime, remainingTime, waitingTime, turnaroundTime, weightedTA);
@@ -119,6 +118,7 @@ void checkforNewProcesses(int msg_q, int algo)
     while (msgrcv(msg_q, &msg, sizeof(ProcessMsg) - sizeof(long), 1, IPC_NOWAIT) != -1)
     { // wait for msg of type 1 (process)
         printf("Received process message: ID=%d, Arrival=%d, Runtime=%d, Priority=%d\n", msg.id, msg.arrivalTime, msg.runTime, msg.priority);
+        countGlobal++;
         int pid = fork();
         if (pid == -1)
         {
@@ -169,14 +169,6 @@ void checkforNewProcesses(int msg_q, int algo)
                 RR_insert(queue, obj); // pcbtempRR is the process that is running now
                 break;
             }
-        }
-    }
-    if (algo == RR && InsideRR == false)
-    {
-        if (pcbtempRR != NULL)
-        {
-            RR_insert(queue, pcbtempRR); // pcbtempRR is the process that is running now
-            pcbtempRR = NULL;            // Reset the pointer to avoid re-adding the same process
         }
     }
 }
@@ -281,9 +273,17 @@ void roundRobin(int quantum, FILE *fp) // assuming I am going to get a array of 
     pcbtempRR = NULL;
 
     // printf("Round Robin started\n"); //remove it later
-    InsideRR = true; // to check if the process is inside the round robin or not
     pcbtempRR = dequeueCir(queue);
-
+    pcb *fortest = pcbtempRR;
+    while (pcbtempRR!=NULL&&pcbtempRR->remainingTime <= 0)
+    {
+        RR_insert   (queue, pcbtempRR); // Reinsert the process into the queue
+        pcbtempRR =  dequeueCir(queue); // Dequeue the next process
+        if(pcbtempRR == fortest)  {
+            return;
+        }
+    }
+    
     if (pcbtempRR != NULL)
     {
         int currentTime = getClk(); // Time when it get dequeued (start time)
@@ -310,7 +310,8 @@ void roundRobin(int quantum, FILE *fp) // assuming I am going to get a array of 
             kill(pcbtempRR->systemid, SIGCONT);
             schedulerlogPrint(fp, currentTime + quantum, pcbtempRR, "stopped");
             RR_insert(queue, pcbtempRR); // Reinsert the process into the queue
-            pcbtempRR = NULL;            // Reset the pointer to avoid re-adding the same process
+
+            //pcbtempRR = NULL;            // Reset the pointer to avoid re-adding the same process
         }
         else if (pcbtempRR)
         {
@@ -319,13 +320,13 @@ void roundRobin(int quantum, FILE *fp) // assuming I am going to get a array of 
             {
             }
             pcbtempRR->remainingTime = 0;
+            RR_insert(queue, pcbtempRR);
             kill(pcbtempRR->systemid, SIGCONT); // run the process
+            
             // the function that will be traded for shawarma
             // free(pcbtempRR);
-            // pcbtempRR = NULL;
         }
     }
-    InsideRR = false; // Reset the flag after processing
 }
 
 bool findProcessByPid(pid_t pid)
@@ -399,15 +400,15 @@ bool findProcessByPid(pid_t pid)
     case RR:
 
         bool found = false;
-        if (pcbtempRR != NULL && pcbtempRR->systemid == pid)
+        if(countfinished+1 ==countGlobal)
         {
-            RR_insert(queue, pcbtempRR); // Reinsert the process into the queue
-            pcbtempRR = NULL;            // Reset the pointer to avoid re-adding the same process
-            InsideRR = false;            // Reset the flag after processing
+            schedulerlogPrint(fp, getClk(), pcbtempRR, "finished");
+            free(pcbtempRR);
+            return true;
         }
-
         if (isEmptyCir(queue))
         {
+            printf("Queue is empty, cannot find PID %d\n", pid);
             return false;
         }
 
@@ -440,6 +441,8 @@ bool findProcessByPid(pid_t pid)
         while (i != queue->rear)
         {
             int next = (i + 1) % CirQ_SIZE;
+            if(queue->queue[next] == NULL)
+                {printf("error line 437\n");}
             queue->queue[i] = queue->queue[next];
             i = next;
         }
@@ -480,7 +483,7 @@ void signalHandler(int signum)
         if (terminatedPid == 0)
         {
             // No child exited yet — sleep briefly to avoid CPU spinning
-            // usleep(100 * 100); // 10 ms
+            //usleep(100 * 100); // 10 ms
         }
     } while (terminatedPid == 0);
 
