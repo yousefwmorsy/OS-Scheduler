@@ -152,9 +152,9 @@ void checkforNewProcesses(int msg_q, int algo)
                 perror("Memory allocation for PCB failed\n");
                 return;
             }
-            if (pid < 0)
-                return;
             pcb tempPcb = pcb_init(&msg, pid);
+
+        
             memcpy(obj, &tempPcb, sizeof(pcb));
 
             // add to suitable ds
