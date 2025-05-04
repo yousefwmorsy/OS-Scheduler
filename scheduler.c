@@ -6,7 +6,6 @@ int WT = 0;             // turnaround time of the process
 int TotalTime = 0;      // execution time of the process
 int countGlobal = 0;    // number of processes in the system
 int countfinished = 0;
-int IdleTime = 0;
 int newentry = 0;              // flag to check if a new process has arrived
 bool workingOnHandler = false; // flag to check if the signal handler is being executed
 bool allsent = false;
@@ -187,7 +186,6 @@ void SRTN_func(FILE *fp, FILE *fp2)
     // 1.Check if any process enqueued in the Queue or not
     if (SRTN_Queue->size == 0)
     {
-        IdleTime++;
         return;
     }
 
@@ -228,7 +226,6 @@ void HPF_Iter(FILE *fp, FILE *fp2)
     int currentTime = getClk();
     if (head == NULL)
     {
-        IdleTime++;
         return;
     }
 
