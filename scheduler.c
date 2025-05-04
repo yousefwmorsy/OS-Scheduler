@@ -7,17 +7,17 @@ int TotalTime = 0;      // execution time of the process
 int countGlobal = 0;    // number of processes in the system
 int countfinished = 0;
 int IdleTime = 0;
+bool workingOnHandler = false; // flag to check if the signal handler is being executed
 bool allsent = false;
 PCBPriQ *PriQ;             // ready queue for HPF
 SRTN_PriQueue *SRTN_Queue; // Priority Queue for SRTN
 CircularQueue *queue;      // queue for RR
-pcb *pcbtempRR;          // process that is running now
+pcb *pcbtempRR;            // process that is running now
 float *WTAs;               // Array to store WTA values
 FILE *fp;                  // file pointer for logging
 enum schedulealgo algo;    // algorithm type
 int quantum;               // quantum for RR
 int MessageQueueId;
-
 
 bool readyQNotEmpty(int algo)
 {
@@ -114,6 +114,7 @@ bool checkifEnd(int msg_q)
 
 void checkforNewProcesses(int msg_q, int algo)
 {
+    workingOnHandler = true;
     ProcessMsg msg;
     // printf("Checking for new processes...\n");
     while (msgrcv(msg_q, &msg, sizeof(ProcessMsg) - sizeof(long), 1, IPC_NOWAIT) != -1)
@@ -142,6 +143,7 @@ void checkforNewProcesses(int msg_q, int algo)
         }
         else
         {
+            kill(getpid(), SIGSTOP); // stop the process immediately after forking
             printf("Forked process with PID=%d\n", pid);
             // kill(pid, SIGSTOP);
             pcb *obj = malloc(sizeof(pcb));
@@ -150,7 +152,8 @@ void checkforNewProcesses(int msg_q, int algo)
                 perror("Memory allocation for PCB failed\n");
                 return;
             }
-            if(pid < 0) return;
+            if (pid < 0)
+                return;
             pcb tempPcb = pcb_init(&msg, pid);
             memcpy(obj, &tempPcb, sizeof(pcb));
 
@@ -173,6 +176,7 @@ void checkforNewProcesses(int msg_q, int algo)
             }
         }
     }
+    workingOnHandler = false;
 }
 
 void SRTN_func(FILE *fp, FILE *fp2)
@@ -188,30 +192,33 @@ void SRTN_func(FILE *fp, FILE *fp2)
 
     // 2. Peek the SRTN Process in the Priority Queue
     pcb *current_process = SRTN_PriQueue_peek(SRTN_Queue);
-    if (current_process == NULL || current_process->remainingTime <= 0) {
-        return;  // Skip invalid processes
+    if (current_process == NULL || current_process->remainingTime <= 0)
+    {
+        return; // Skip invalid processes
     }
 
     // 3. Start The Process if its first time to start
-    if (current_process->remainingTime == current_process->executionTime)  schedulerlogPrint(fp, getClk(), current_process, "started");
+    if (current_process->remainingTime == current_process->executionTime)
+        schedulerlogPrint(fp, getClk(), current_process, "started");
 
     // 4. Increment the waiting time of the other Processes
     for (int i = 0; i < SRTN_Queue->size; i++)
     {
-        if (SRTN_Queue->Process[i] != current_process) SRTN_Queue->Process[i]->waitingTime++; // Here it will increment the waiting time of any process which now doesn't take the process.
-
+        if (SRTN_Queue->Process[i] != current_process)
+            SRTN_Queue->Process[i]->waitingTime++; // Here it will increment the waiting time of any process which now doesn't take the process.
     }
-    
+
     while (currentTime + 1 > getClk())
     {
     }
 
     // 5. Decrement the remaining time of the peeked Process
-    if (current_process && current_process->remainingTime > 0 && kill(current_process->systemid, SIGCONT) != -1) current_process->remainingTime--;
+    if (current_process && current_process->remainingTime > 0 && kill(current_process->systemid, SIGCONT) != -1)
+        current_process->remainingTime--;
 
     // 7. Print the curent states of the current moment of the process
-    if (current_process) printf("SRTN: Running Process %d at %d, remsaining time: %d\n", current_process->givenid, getClk(), current_process->remainingTime);
-        
+    if (current_process)
+        printf("SRTN: Running Process %d at %d, remsaining time: %d\n", current_process->givenid, getClk(), current_process->remainingTime);
 }
 
 void HPF_Iter(FILE *fp, FILE *fp2)
@@ -259,15 +266,16 @@ void roundRobin(int quantum, FILE *fp) // assuming I am going to get a array of 
     // printf("Round Robin started\n"); //remove it later
     pcbtempRR = dequeueCir(queue);
     pcb *fortest = pcbtempRR;
-    while (pcbtempRR!=NULL&&pcbtempRR->remainingTime <= 0)
+    while (pcbtempRR != NULL && pcbtempRR->remainingTime <= 0)
     {
-        RR_insert   (queue, pcbtempRR); // Reinsert the process into the queue
-        pcbtempRR =  dequeueCir(queue); // Dequeue the next process
-        if(pcbtempRR == fortest)  {
+        RR_insert(queue, pcbtempRR);   // Reinsert the process into the queue
+        pcbtempRR = dequeueCir(queue); // Dequeue the next process
+        if (pcbtempRR == fortest)
+        {
             return;
         }
     }
-    
+
     if (pcbtempRR != NULL)
     {
         int currentTime = getClk(); // Time when it get dequeued (start time)
@@ -295,7 +303,7 @@ void roundRobin(int quantum, FILE *fp) // assuming I am going to get a array of 
             schedulerlogPrint(fp, currentTime + quantum, pcbtempRR, "stopped");
             RR_insert(queue, pcbtempRR); // Reinsert the process into the queue
 
-            //pcbtempRR = NULL;            // Reset the pointer to avoid re-adding the same process
+            // pcbtempRR = NULL;            // Reset the pointer to avoid re-adding the same process
         }
         else if (pcbtempRR)
         {
@@ -306,7 +314,7 @@ void roundRobin(int quantum, FILE *fp) // assuming I am going to get a array of 
             pcbtempRR->remainingTime = 0;
             RR_insert(queue, pcbtempRR);
             kill(pcbtempRR->systemid, SIGCONT); // run the process
-            
+
             // the function that will be traded for shawarma
             // free(pcbtempRR);
         }
@@ -373,7 +381,7 @@ bool findProcessByPid(pid_t pid)
                 }
 
                 // Clear the last pointer and decrement size
-                SRTN_Queue->Process[SRTN_Queue->size] = NULL;
+                SRTN_Queue->Process[SRTN_Queue->size - 1] = NULL;
                 SRTN_Queue->size--;
 
                 return true;
@@ -384,7 +392,7 @@ bool findProcessByPid(pid_t pid)
     case RR:
 
         bool found = false;
-        if(countfinished+1 ==countGlobal)
+        if (countfinished + 1 == countGlobal)
         {
             schedulerlogPrint(fp, getClk(), pcbtempRR, "finished");
             free(pcbtempRR);
@@ -425,8 +433,10 @@ bool findProcessByPid(pid_t pid)
         while (i != queue->rear)
         {
             int next = (i + 1) % CirQ_SIZE;
-            if(queue->queue[next] == NULL)
-                {printf("error line 437\n");}
+            if (queue->queue[next] == NULL)
+            {
+                printf("error line 437\n");
+            }
             queue->queue[i] = queue->queue[next];
             i = next;
         }
@@ -454,6 +464,7 @@ void recieveMess(int signum)
 {
     printf("Received signal to check for new processes\n");
     checkforNewProcesses(MessageQueueId, algo);
+    return;
 }
 
 void signalHandler(int signum)
@@ -469,7 +480,7 @@ void signalHandler(int signum)
         if (terminatedPid == 0)
         {
             // No child exited yet — sleep briefly to avoid CPU spinning
-            //usleep(100 * 100); // 10 ms
+            // usleep(100 * 100); // 10 ms
         }
     } while (terminatedPid == 0);
 
@@ -505,8 +516,8 @@ int main(int argc, char *argv[])
     // TODO implement the scheduler :)
     // upon termination release the clock resources.
     printf("Scheduler starting\n");
-    signal(SIGUSR1, recieveMess);   // Register handler for SIGUSR1 signal
-    signal(SIGUSR2, signalHandler); // Register handler for SIGCHLD signal
+    signal(SIGUSR2, recieveMess);   // Register handler for SIGUSR1 signal
+    signal(SIGUSR1, signalHandler); // Register handler for SIGCHLD signal
 
     algo = atoi(argv[1]);
     quantum = atoi(argv[2]);
@@ -546,10 +557,11 @@ int main(int argc, char *argv[])
         // Check for new processes only when needed
         int lastClk = getClk();
         end = end ? end : checkifEnd(MessageQueueId);
-        checkforNewProcesses(MessageQueueId, algo);
+        // checkforNewProcesses(MessageQueueId, algo);
 
         // Only run algorithm iterations when the clock ticks
         // run the algorithms (one iteration)
+        // usleep(2000);
 
         switch (algo)
         {

@@ -151,7 +151,7 @@ int main(int argc, char *argv[])
             printf("msgsnd failed");
             exit(1);
         }
-        kill(scheduler, SIGUSR1); // Notify the scheduler to receive the message
+        kill(scheduler, SIGUSR2); // Notify the scheduler to receive the message
         printf("Sent MSG at %d \n", getClk());
     }
     // Send a message to indicate that all processes have been sent to the scheduler
