@@ -6,7 +6,6 @@ int WT = 0;             // turnaround time of the process
 int TotalTime = 0;      // execution time of the process
 int countGlobal = 0;    // number of processes in the system
 int countfinished = 0;
-int newentry = 0;              // flag to check if a new process has arrived
 bool workingOnHandler = false; // flag to check if the signal handler is being executed
 bool allsent = false;
 PCBPriQ *PriQ;             // ready queue for HPF
