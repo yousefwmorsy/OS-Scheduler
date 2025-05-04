@@ -7,6 +7,7 @@ int TotalTime = 0;      // execution time of the process
 int countGlobal = 0;    // number of processes in the system
 int countfinished = 0;
 int IdleTime = 0;
+int newentry = 0;              // flag to check if a new process has arrived
 bool workingOnHandler = false; // flag to check if the signal handler is being executed
 bool allsent = false;
 PCBPriQ *PriQ;             // ready queue for HPF
@@ -463,7 +464,8 @@ bool findProcessByPid(pid_t pid)
 void recieveMess(int signum)
 {
     printf("Received signal to check for new processes\n");
-    checkforNewProcesses(MessageQueueId, algo);
+    newentry++;
+    // checkforNewProcesses(MessageQueueId, algo);
     return;
 }
 
@@ -557,11 +559,15 @@ int main(int argc, char *argv[])
         // Check for new processes only when needed
         int lastClk = getClk();
         end = end ? end : checkifEnd(MessageQueueId);
-        // checkforNewProcesses(MessageQueueId, algo);
+        while (newentry > 0)
+        {
+            checkforNewProcesses(MessageQueueId, algo);
+            newentry--;
+        }
 
         // Only run algorithm iterations when the clock ticks
         // run the algorithms (one iteration)
-        // usleep(2000);
+        usleep(2000);
 
         switch (algo)
         {
@@ -570,7 +576,7 @@ int main(int argc, char *argv[])
             break;
         case SRTN:
             SRTN_func(fp, fp2);
-            // sleep(1); // Sleep for a short duration to avoid busy waiting
+            usleep(1000); // Sleep for a short duration to avoid busy waiting
             break;
         case RR:
             roundRobin(quantum, fp);

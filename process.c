@@ -26,14 +26,14 @@ int main(int agrc, char *argv[])
     PID = atoi(argv[2]);           // get the PID from the command line arguments
     quantum = atoi(argv[3]);       // get the quantum from the command line arguments
     printf("Process %d forked at %d and recieved %d remaining time \n", PID, getClk(), remainingtime);
-    kill(getppid(), SIGCONT); // Send SIGUSR1 to the Scheduer
     // TODO it needs to get the remaining time from somewhere
     // remainingtime = ??;
     signal(SIGCONT, handler); // Register handler for SIGUSR1 signal
+    kill(getppid(), SIGCONT); // Send SIGUSR1 to the Scheduer
     while (1)
     {
         // printf("Waiting...\n");
-        kill(getpid(), SIGSTOP); // remainingtime = ??;
+        kill(getpid(), SIGTSTP); // remainingtime = ??;
         // pause();
     }
 
