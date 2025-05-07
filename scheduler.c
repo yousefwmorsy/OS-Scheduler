@@ -1,5 +1,6 @@
 #include "headers.h"
 #include <math.h>
+#define maxMemory 1024
 #define maxProcess 1000 // will change and it later and probably remove it from the code
 float WTA = 0;          // waiting time of the process
 int WT = 0;             // turnaround time of the process
@@ -18,6 +19,10 @@ FILE *fp;                  // file pointer for logging
 enum schedulealgo algo;    // algorithm type
 int quantum;               // quantum for RR
 int MessageQueueId;
+Memory_Block *memory;
+Blocked_Processes *BP;
+int numProcesses;
+
 
 bool readyQNotEmpty(int algo)
 {
@@ -117,8 +122,10 @@ void checkforNewProcesses(int msg_q, int algo)
     workingOnHandler = true;
     ProcessMsg msg;
     // printf("Checking for new processes...\n");
+    bool entered = false;
     while (msgrcv(msg_q, &msg, sizeof(ProcessMsg) - sizeof(long), 1, IPC_NOWAIT) != -1)
     { // wait for msg of type 1 (process)
+        entered = true;
         printf("Received process message: ID=%d, Arrival=%d, Runtime=%d, Priority=%d\n", msg.id, msg.arrivalTime, msg.runTime, msg.priority);
         countGlobal++;
         int pid = fork();
@@ -156,23 +163,47 @@ void checkforNewProcesses(int msg_q, int algo)
 
         
             memcpy(obj, &tempPcb, sizeof(pcb));
-
-            // add to suitable ds
-            switch (algo)
-            {
-            case HPF:
-                PCBPriQ_enqueue(PriQ, obj);
-                printf("Enqueued process ID=%d into priority queue\n", obj->givenid);
-                break;
-            case SRTN:
-                printf("SRTN: Entered!!");
-                SRTN_PriQueue_insert(SRTN_Queue, obj);
-                printf("Enqueued process ID=%d into SRTN queue\n", obj->givenid);
-                break;
-            case RR:
-                printf("Enqueued process ID=%d into RR queue\n", obj->givenid);
-                RR_insert(queue, obj); // pcbtempRR is the process that is running now
-                break;
+            if(!allocate_memory(&tempPcb, memory)){
+                blockedQueue_enqueue(BP, &tempPcb);
+            }
+            else{
+                // add to suitable ds
+                numProcesses--;
+                switch (algo)
+                {
+                case HPF:
+                    PCBPriQ_enqueue(PriQ, obj);
+                    printf("Enqueued process ID=%d into priority queue\n", obj->givenid);
+                    break;
+                case SRTN:
+                    SRTN_PriQueue_insert(SRTN_Queue, obj);
+                    printf("Enqueued process ID=%d into SRTN queue\n", obj->givenid);
+                    break;
+                case RR:
+                    printf("Enqueued process ID=%d into RR queue\n", obj->givenid);
+                    RR_insert(queue, obj); // pcbtempRR is the process that is running now
+                    break;
+                }
+            }
+        }
+    }
+    if(!numProcesses && !entered){
+        pcb *blocked_process = blockedQueue_peek(BP);
+        if(allocate_memory(blocked_process, memory)){
+            blockedQueue_dequeue(BP);
+            switch (algo){
+                case HPF:
+                    PCBPriQ_enqueue(PriQ, blocked_process);
+                    printf("Enqueued process ID=%d into priority queue\n", blocked_process->givenid);
+                    break;
+                case SRTN:
+                    SRTN_PriQueue_insert(SRTN_Queue, blocked_process);
+                    printf("Enqueued process ID=%d into SRTN queue\n", blocked_process->givenid);
+                    break;
+                case RR:
+                    printf("Enqueued process ID=%d into RR queue\n", blocked_process->givenid);
+                    RR_insert(queue, blocked_process); // pcbtempRR is the process that is running now
+                    break;
             }
         }
     }
@@ -214,6 +245,7 @@ void SRTN_func(FILE *fp, FILE *fp2)
     // 5. Decrement the remaining time of the peeked Process
     if (current_process && current_process->remainingTime > 0 && kill(current_process->systemid, SIGCONT) != -1)
         current_process->remainingTime--;
+    else free_memory(memory, current_process);
 
     // 7. Print the curent states of the current moment of the process
     if (current_process)
@@ -520,6 +552,7 @@ int main(int argc, char *argv[])
 
     algo = atoi(argv[1]);
     quantum = atoi(argv[2]);
+    numProcesses = atoi(argv[3]);
     printf("Algo no %d, quantum=%d\n", algo, quantum);
     MessageQueueId = msgget(MSG_KEY, IPC_CREAT | 0666);
     if (MessageQueueId == -1)
@@ -542,8 +575,19 @@ int main(int argc, char *argv[])
         queue->rear = -1;
         pcbtempRR = NULL;
     }
-
     printf("PCB Q init completed\n");
+
+    memory = memory_init(0, maxMemory);
+    if(!memory){
+        perror("Problem in initializing memory");
+        exit(1);
+    }
+
+    BP = initialize_blockedQueue();
+    if(!BP){
+        perror("Problem in initializing BP");
+        exit(1);
+    }
 
     fp = fopen("schedulerlog.txt", "w");
     fprintf(fp, "#At time  x process y state arr w total z remain y wait k\n");
@@ -589,6 +633,8 @@ int main(int argc, char *argv[])
     free(PriQ);
     free(queue);
     SRTN_PriQueue_free(SRTN_Queue);
+    free(memory);
+    blockedQueue_clear(BP);
     destroyClk(true);
     exit(0);
 }

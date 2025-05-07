@@ -15,6 +15,7 @@ typedef struct
 void clearResources(int);
 AllProcessesQueue *queue;
 AllProcessesQueue *SentQueue;
+int num_processes= 0 ;
 
 int main(int argc, char *argv[])
 {
@@ -43,12 +44,13 @@ int main(int argc, char *argv[])
         {
             continue;
         }
-        int id, arrival, runtime, priority;
+        int id, arrival, runtime, priority, memorySize;
 
-        if (sscanf(line, "%d\t%d\t%d\t%d", &id, &arrival, &runtime, &priority) == 4)
+        if (sscanf(line, "%d\t%d\t%d\t%d\t%d", &id, &arrival, &runtime, &priority, &memorySize) == 5)
         {
-            processNode *newprocess = create_process(id, arrival, runtime, priority);
+            processNode *newprocess = create_process(id, arrival, runtime, priority, memorySize);
             enqueue(queue, newprocess);
+            num_processes++;
         }
     }
     fclose(inputfile);
@@ -100,7 +102,7 @@ int main(int argc, char *argv[])
     }
     else if (scheduler == 0)
     {
-        execl("./Compiled/scheduler.out", "./Compiled/scheduler.out", algo_str, quantum_str, NULL);
+        execl("./Compiled/scheduler.out", "./Compiled/scheduler.out", algo_str, quantum_str, num_processes, NULL);
         perror("scheduler execl failed\n");
     }
     // 4. Use this function after creating the clock process to initialize clock
@@ -146,6 +148,7 @@ int main(int argc, char *argv[])
         msg.arrivalTime = Curr->arrivalTime;
         msg.runTime = Curr->runTime;
         msg.priority = Curr->priority;
+        msg.memsize = Curr->memsize; // Set the memory size
         if (msgsnd(MessageQueueId, &msg, sizeof(ProcessMsg) - sizeof(long), 0) == -1)
         {
             printf("msgsnd failed");
