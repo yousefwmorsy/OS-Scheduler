@@ -143,25 +143,26 @@ Memory_Block* memory_init(int start, int size){
     head->right = NULL;
     return head;
 }
-
+ 
 // Trying to allocate a new memory for the new process
 Memory_Block* allocate_memory(pcb *newProcess, Memory_Block *head){
     //1. Check if the current block acceptable to put the chunk in it.
-    if(!head->is_free || head->size < newProcess->memsize || head == NULL){
+    if(head == NULL || head->size < newProcess->memsize){
         return NULL;
     }
     
     //2. Check if it possible for the process fits in the child 
-    if(head->size/2 < newProcess->memsize){
+    if(head->is_free && head->size/2 < newProcess->memsize){ //process can't fit in the child -> allocate in current block
         head->is_free = false;
         head->process = newProcess;
         return head;
     }
-    else{
-        if(!head->left || !head->right){
+    else{ //if it can fit in the child, check if it is free or not
+        if(!head->left || !head->right){ // If the left and right blocks are not initialized, initialize them
             head->left = memory_init(head->start, head->size/2);
             head->right = memory_init(head->start + head->size/2, head->size/2);
         }
+        head->is_free = false; // Mark the current block as not free
         Memory_Block* newBlock = allocate_memory(newProcess, head->left);
         if(! newBlock){
             newBlock = allocate_memory(newProcess, head->right);
