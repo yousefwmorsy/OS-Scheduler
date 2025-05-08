@@ -172,6 +172,8 @@ Memory_Block* allocate_memory(pcb *newProcess, Memory_Block *head){
 }
 
 void free_memory(Memory_Block* head, pcb* process){
+    if(!head) return;
+    
     if(head->process->givenid == process->givenid){
         head->is_free = true;
         head->process = NULL;
