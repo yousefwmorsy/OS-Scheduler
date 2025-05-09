@@ -116,6 +116,8 @@ typedef struct
     int waitingTime;
     int priority;
     int memsize;
+    int memStart;
+    int memEnd;
 } pcb;
 
 /*
@@ -127,6 +129,7 @@ typedef struct Memory_Block
     int size; // The block size
     pcb *process; // PCB pointer to the process
     bool is_free; // Indicates if the block is free or not
+    bool is_used;
     struct Memory_Block * left; // Pointer to the left chunk
     struct Memory_Block * right; // Pointer to the right chunk
 } Memory_Block;
@@ -138,6 +141,7 @@ Memory_Block* memory_init(int start, int size){
     head->start = start;
     head->size = size;
     head->is_free = true;
+    head->is_used = false;
     head->process = NULL;
     head->left = NULL;
     head->right = NULL;
@@ -152,12 +156,15 @@ Memory_Block* allocate_memory(pcb *newProcess, Memory_Block *head, char place){
     }
     
     //2. Check if it possible for the process fits in the child 
-    if(head->is_free && head->size/2 < newProcess->memsize){ //process can't fit in the child -> allocate in current block
+    if(head->is_used == false &&head->is_free && head->size/2 < newProcess->memsize){ //process can't fit in the child -> allocate in current block
         head->is_free = false;
+        head->is_used = true ;
         head->process = newProcess;
+        newProcess->memStart = head->start;
+        newProcess->memEnd = head->start + head->size -1 ;
         printf("Allocated at size %d: %c\n", head->size, place);
         return head;
-    }
+    } else if (head->is_used == true){return NULL ;}
     else if(head->size/2 >= newProcess->memsize){ //if it can fit in the child, check if it is free or not
         if(!head->left || !head->right){ // If the left and right blocks are not initialized, initialize them
             head->left = memory_init(head->start, head->size/2);
@@ -178,6 +185,7 @@ void free_memory(Memory_Block* head, int pid){
     
     if(head->process && head->process->systemid == pid){
         head->is_free = true;
+        head->is_used = false;
         return;
     }
 
@@ -190,6 +198,7 @@ void free_memory(Memory_Block* head, int pid){
         head->left = NULL;
         head->right = NULL;
         head->is_free = true;
+        head->is_used = false;
     }
 }
 
@@ -283,6 +292,8 @@ void ClearQueue(AllProcessesQueue *q)
         pcbobj.waitingTime = 0;
         pcbobj.priority = processmsg->priority;
         pcbobj.memsize = processmsg->memsize;
+        pcbobj.memStart=0;
+        pcbobj.memEnd = 0;
         return pcbobj;
     };
     // note it need a lot of improvments I know it is not right I am making the first version of the code and I will improve it later

@@ -21,6 +21,7 @@ int quantum;               // quantum for RR
 int MessageQueueId;
 Memory_Block *memory;
 Blocked_Processes *BP;
+FILE *fp3;
 
 
 bool readyQNotEmpty(int algo)
@@ -75,6 +76,10 @@ void schedulerlogPrint(FILE *fip, int currentTime, pcb *pcb, char status[])
         fprintf(fip, "At time  %d process %d %s arr %d total %d remain %d wait %d \n", currentTime, processID, status, arrivalTime, totalTime, remainingTime, waitingTime);
         printf("At time  %d process %d %s arr %d total %d remain %d wait %d \n", currentTime, processID, status, arrivalTime, totalTime, remainingTime, waitingTime);
     }
+}
+
+void printMemLog(FILE *fp,int currentTime ,pcb *pcb,char status []){
+fprintf(fp,"At time %d %s %d bytes for process %d from %d to %d\n",currentTime ,status ,pcb->memsize,pcb->givenid,pcb->memStart,pcb->memEnd);
 }
 
 void schedulerPrefPrint(FILE *fp)
@@ -167,6 +172,7 @@ void checkforNewProcesses(int msg_q, int algo)
                 printf("Process %d get in blocked memory\n", tempPcb.givenid);
             }
             else{
+                printMemLog(fp3,getClk(),obj,"allocated");
                 // add to suitable ds
                 switch (algo)
                 {
@@ -335,10 +341,14 @@ bool findProcessByPid(pid_t pid)
     free_memory(memory, pid); // Free memory
     blocked_process = blockedQueue_peek(BP);
     if(blocked_process){ // Try to allocate the memory
-        allocate_memory(blocked_process, memory, 'H');
+        if(!allocate_memory(blocked_process, memory, 'H')){
+            printf("failed to allocate in findProcessByPid");
+        } else{
+        printMemLog(fp3,getClk(),blocked_process,"allocated");
         pcb temp = blockedQueue_dequeue(BP);
         memcpy(blocked_process, &temp, sizeof(pcb)); // Dequeue if you can
         printf("Blocked process comes entered the ready Queue\n");
+    }
     }
     printf("------------------------------ \n");
     switch (algo)
@@ -358,6 +368,7 @@ bool findProcessByPid(pid_t pid)
         {
             PriQ->head = current->next;
             schedulerlogPrint(fp, getClk(), &current->PCB, "finished");
+            printMemLog(fp3,getClk(),&current->PCB,"freed");
             free(current);
             return true;
         }
@@ -389,6 +400,7 @@ bool findProcessByPid(pid_t pid)
             if (SRTN_Queue->Process[i]->systemid == pid)
             {
                 schedulerlogPrint(fp, getClk(), SRTN_Queue->Process[i], "finished");
+                printMemLog(fp3,getClk(),SRTN_Queue->Process[i],"freed");
                 printf("Process with PID %d done and finished\n", pid);
 
                 // Free the process
@@ -418,6 +430,7 @@ bool findProcessByPid(pid_t pid)
         if (countfinished + 1 == countGlobal)
         {
             schedulerlogPrint(fp, getClk(), pcbtempRR, "finished");
+            printMemLog(fp3,getClk(),pcbtempRR,"freed");
             free(pcbtempRR);
             if(blocked_process){
                 enqueueCir(queue, blocked_process);
@@ -453,6 +466,7 @@ bool findProcessByPid(pid_t pid)
         // Save the PCB to free it later
         pcb *toRemove = queue->queue[pos];
         schedulerlogPrint(fp, getClk(), toRemove, "finished");
+        printMemLog(fp3,getClk(),toRemove,"freed");
 
         // Shift elements forward in circular fashion
         i = pos;
@@ -591,6 +605,8 @@ int main(int argc, char *argv[])
     fp = fopen("schedulerlog.txt", "w");
     fprintf(fp, "#At time  x process y state arr w total z remain y wait k\n");
     FILE *fp2 = fopen("schedulerPref.txt", "w");
+    fp3 = fopen("memory.log","w");
+    fprintf(fp3,"#At time x allocated y bytes for process z from i to j\n");
 
     bool end = 0;
     while (!end || readyQNotEmpty(algo))
@@ -629,6 +645,7 @@ int main(int argc, char *argv[])
     printf("done");
     fclose(fp);
     fclose(fp2);
+    fclose(fp3);
     free(PriQ);
     free(queue);
     SRTN_PriQueue_free(SRTN_Queue);
