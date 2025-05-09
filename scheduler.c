@@ -21,7 +21,6 @@ int quantum;               // quantum for RR
 int MessageQueueId;
 Memory_Block *memory;
 Blocked_Processes *BP;
-int numProcesses;
 
 
 bool readyQNotEmpty(int algo)
@@ -163,12 +162,12 @@ void checkforNewProcesses(int msg_q, int algo)
 
         
             memcpy(obj, &tempPcb, sizeof(pcb));
-            if(!allocate_memory(&tempPcb, memory)){
-                blockedQueue_enqueue(BP, &tempPcb);
+            if(!allocate_memory(obj, memory, 'H')){
+                blockedQueue_enqueue(BP, obj);
+                printf("Process %d get in blocked memory\n", tempPcb.givenid);
             }
             else{
                 // add to suitable ds
-                numProcesses--;
                 switch (algo)
                 {
                 case HPF:
@@ -184,26 +183,6 @@ void checkforNewProcesses(int msg_q, int algo)
                     RR_insert(queue, obj); // pcbtempRR is the process that is running now
                     break;
                 }
-            }
-        }
-    }
-    if(!numProcesses && !entered){
-        pcb *blocked_process = blockedQueue_peek(BP);
-        if(allocate_memory(blocked_process, memory)){
-            blockedQueue_dequeue(BP);
-            switch (algo){
-                case HPF:
-                    PCBPriQ_enqueue(PriQ, blocked_process);
-                    printf("Enqueued process ID=%d into priority queue\n", blocked_process->givenid);
-                    break;
-                case SRTN:
-                    SRTN_PriQueue_insert(SRTN_Queue, blocked_process);
-                    printf("Enqueued process ID=%d into SRTN queue\n", blocked_process->givenid);
-                    break;
-                case RR:
-                    printf("Enqueued process ID=%d into RR queue\n", blocked_process->givenid);
-                    RR_insert(queue, blocked_process); // pcbtempRR is the process that is running now
-                    break;
             }
         }
     }
@@ -245,7 +224,6 @@ void SRTN_func(FILE *fp, FILE *fp2)
     // 5. Decrement the remaining time of the peeked Process
     if (current_process && current_process->remainingTime > 0 && kill(current_process->systemid, SIGCONT) != -1)
         current_process->remainingTime--;
-    else free_memory(memory, current_process);
 
     // 7. Print the curent states of the current moment of the process
     if (current_process)
@@ -353,6 +331,15 @@ void roundRobin(int quantum, FILE *fp) // assuming I am going to get a array of 
 
 bool findProcessByPid(pid_t pid)
 {
+    pcb * blocked_process = NULL;
+    free_memory(memory, pid); // Free memory
+    blocked_process = blockedQueue_peek(BP);
+    if(blocked_process){ // Try to allocate the memory
+        allocate_memory(blocked_process, memory, 'H');
+        pcb temp = blockedQueue_dequeue(BP);
+        memcpy(blocked_process, &temp, sizeof(pcb)); // Dequeue if you can
+        printf("Blocked process comes entered the ready Queue\n");
+    }
     printf("------------------------------ \n");
     switch (algo)
     {
@@ -390,6 +377,9 @@ bool findProcessByPid(pid_t pid)
         printf("Process with PID %d removed from the queue\n", pid);
         prev->next = current->next;
         free(current);
+        if(blocked_process){
+            PCBPriQ_enqueue(PriQ, blocked_process);
+        }
         return true;
         break;
 
@@ -413,9 +403,12 @@ bool findProcessByPid(pid_t pid)
                 // Clear the last pointer and decrement size
                 SRTN_Queue->Process[SRTN_Queue->size - 1] = NULL;
                 SRTN_Queue->size--;
-
+                if(blocked_process){
+                    SRTN_PriQueue_insert(SRTN_Queue, blocked_process);
+                }
                 return true;
             }
+            
         }
         return false; // ID not found
         break;
@@ -426,6 +419,9 @@ bool findProcessByPid(pid_t pid)
         {
             schedulerlogPrint(fp, getClk(), pcbtempRR, "finished");
             free(pcbtempRR);
+            if(blocked_process){
+                enqueueCir(queue, blocked_process);
+            }
             return true;
         }
         if (isEmptyCir(queue))
@@ -485,6 +481,9 @@ bool findProcessByPid(pid_t pid)
 
         // Free the memory
         free(toRemove);
+        if(blocked_process){
+            enqueueCir(queue, blocked_process);
+        }
         return true;
         break;
     }
@@ -521,6 +520,7 @@ void signalHandler(int signum)
 
         // Handle the termination of the process
         // For example, remove it from the appropriate queue or update its status
+        
         if (findProcessByPid(terminatedPid))
         {
             printf("Process with PID %d removed from the queue\n", terminatedPid);
@@ -552,7 +552,6 @@ int main(int argc, char *argv[])
 
     algo = atoi(argv[1]);
     quantum = atoi(argv[2]);
-    numProcesses = atoi(argv[3]);
     printf("Algo no %d, quantum=%d\n", algo, quantum);
     MessageQueueId = msgget(MSG_KEY, IPC_CREAT | 0666);
     if (MessageQueueId == -1)

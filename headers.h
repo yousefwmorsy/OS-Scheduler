@@ -145,7 +145,7 @@ Memory_Block* memory_init(int start, int size){
 }
  
 // Trying to allocate a new memory for the new process
-Memory_Block* allocate_memory(pcb *newProcess, Memory_Block *head){
+Memory_Block* allocate_memory(pcb *newProcess, Memory_Block *head, char place){
     //1. Check if the current block acceptable to put the chunk in it.
     if(head == NULL || head->size < newProcess->memsize){
         return NULL;
@@ -155,38 +155,40 @@ Memory_Block* allocate_memory(pcb *newProcess, Memory_Block *head){
     if(head->is_free && head->size/2 < newProcess->memsize){ //process can't fit in the child -> allocate in current block
         head->is_free = false;
         head->process = newProcess;
+        printf("Allocated at size %d: %c\n", head->size, place);
         return head;
     }
-    else{ //if it can fit in the child, check if it is free or not
+    else if(head->size/2 >= newProcess->memsize){ //if it can fit in the child, check if it is free or not
         if(!head->left || !head->right){ // If the left and right blocks are not initialized, initialize them
             head->left = memory_init(head->start, head->size/2);
             head->right = memory_init(head->start + head->size/2, head->size/2);
         }
         head->is_free = false; // Mark the current block as not free
-        Memory_Block* newBlock = allocate_memory(newProcess, head->left);
+        Memory_Block* newBlock = allocate_memory(newProcess, head->left, 'L');
         if(! newBlock){
-            newBlock = allocate_memory(newProcess, head->right);
+            newBlock = allocate_memory(newProcess, head->right, 'R');
         }
         return newBlock;
     }
+    return NULL;
 }
 
-void free_memory(Memory_Block* head, pcb* process){
+void free_memory(Memory_Block* head, int pid){
     if(!head) return;
     
-    if(head->process->givenid == process->givenid){
+    if(head->process && head->process->systemid == pid){
         head->is_free = true;
-        head->process = NULL;
         return;
     }
 
-    free_memory(head->left, process);
-    free_memory(head->right, process);
+    free_memory(head->left, pid);
+    free_memory(head->right, pid);
 
     if(head->left && head->right && head->left->is_free && head->right->is_free){
         free(head->left);
         free(head->right);
-        head->left = NULL; head->right = NULL;
+        head->left = NULL;
+        head->right = NULL;
         head->is_free = true;
     }
 }
@@ -627,14 +629,14 @@ void blockedQueue_enqueue(Blocked_Processes *BP, pcb* process){
     }
     
     PCBNode *walker = BP->head;
-    while(walker){
+    while(walker->next){
         walker = walker->next;
     }
-    walker = newNode;
-    walker->next = NULL;
+    walker->next = newNode;
+    newNode->next = NULL;
 }
 
-pcb *blockedQueue_dequeue(Blocked_Processes* BP){
+pcb blockedQueue_dequeue(Blocked_Processes* BP){
     if (BP->head == NULL){
         fprintf(stderr, "Queue underflow\n");
         exit(1);
@@ -643,13 +645,15 @@ pcb *blockedQueue_dequeue(Blocked_Processes* BP){
     pcb process = temp->PCB;
     BP->head = BP->head->next;
     free(temp);
-    return &process;
+    return process;
 }
 
 pcb *blockedQueue_peek(Blocked_Processes *queue)
 {
+    printf("Entering Peek in blocked Queue\n");
     if (queue->head == NULL)
     {
+        printf("The Head is NULL in Blocked Queue\n");
         return NULL; // Queue is empty
     }
     return &queue->head->PCB;

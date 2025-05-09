@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
     }
     else if (scheduler == 0)
     {
-        execl("./Compiled/scheduler.out", "./Compiled/scheduler.out", algo_str, quantum_str, num_processes, NULL);
+        execl("./Compiled/scheduler.out", "./Compiled/scheduler.out", algo_str, quantum_str, NULL);
         perror("scheduler execl failed\n");
     }
     // 4. Use this function after creating the clock process to initialize clock
