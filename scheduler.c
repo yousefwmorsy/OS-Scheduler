@@ -22,7 +22,7 @@ int MessageQueueId;
 Memory_Block *memory;
 Blocked_Processes *BP;
 FILE *fp3;
-
+bool outsideOfQ = false ;
 
 bool readyQNotEmpty(int algo)
 {
@@ -36,7 +36,16 @@ bool readyQNotEmpty(int algo)
         return (SRTN_Queue->size != 0);
         break;
     case RR:
-        return (isEmptyCir(queue) != 1);
+       if (isEmptyCir(queue))
+       {
+        if (outsideOfQ)
+        {
+           return true;
+        }
+        return false ;
+
+       }
+       return true ;
         break;
     }
 }
@@ -192,6 +201,11 @@ void checkforNewProcesses(int msg_q, int algo)
             }
         }
     }
+    if (pcbtempRR != NULL && outsideOfQ == true )
+    {
+        RR_insert(queue,pcbtempRR);
+        outsideOfQ = false;
+    }
     workingOnHandler = false;
 }
 
@@ -315,7 +329,8 @@ void roundRobin(int quantum, FILE *fp) // assuming I am going to get a array of 
             }
             kill(pcbtempRR->systemid, SIGCONT);
             schedulerlogPrint(fp, currentTime + quantum, pcbtempRR, "stopped");
-            RR_insert(queue, pcbtempRR); // Reinsert the process into the queue
+            outsideOfQ = true;
+           // RR_insert(queue, pcbtempRR); // Reinsert the process into the queue
 
             // pcbtempRR = NULL;            // Reset the pointer to avoid re-adding the same process
         }
@@ -337,17 +352,18 @@ void roundRobin(int quantum, FILE *fp) // assuming I am going to get a array of 
 
 bool findProcessByPid(pid_t pid)
 {
+    bool canAllocate = false ;
     pcb * blocked_process = NULL;
     free_memory(memory, pid); // Free memory
     blocked_process = blockedQueue_peek(BP);
     if(blocked_process){ // Try to allocate the memory
         if(!allocate_memory(blocked_process, memory, 'H')){
             printf("failed to allocate in findProcessByPid");
-        } else{
-        printMemLog(fp3,getClk(),blocked_process,"allocated");
+        } else {
         pcb temp = blockedQueue_dequeue(BP);
         memcpy(blocked_process, &temp, sizeof(pcb)); // Dequeue if you can
         printf("Blocked process comes entered the ready Queue\n");
+        canAllocate = true;
     }
     }
     printf("------------------------------ \n");
@@ -388,7 +404,8 @@ bool findProcessByPid(pid_t pid)
         printf("Process with PID %d removed from the queue\n", pid);
         prev->next = current->next;
         free(current);
-        if(blocked_process){
+        if(blocked_process && canAllocate == true){
+            printMemLog(fp3,getClk(),blocked_process,"allocated");
             PCBPriQ_enqueue(PriQ, blocked_process);
         }
         return true;
@@ -415,7 +432,8 @@ bool findProcessByPid(pid_t pid)
                 // Clear the last pointer and decrement size
                 SRTN_Queue->Process[SRTN_Queue->size - 1] = NULL;
                 SRTN_Queue->size--;
-                if(blocked_process){
+                if(blocked_process && canAllocate == true){
+                    printMemLog(fp3,getClk(),blocked_process,"allocated");
                     SRTN_PriQueue_insert(SRTN_Queue, blocked_process);
                 }
                 return true;
@@ -432,7 +450,7 @@ bool findProcessByPid(pid_t pid)
             schedulerlogPrint(fp, getClk(), pcbtempRR, "finished");
             printMemLog(fp3,getClk(),pcbtempRR,"freed");
             free(pcbtempRR);
-            if(blocked_process){
+            if(blocked_process && canAllocate == true){
                 enqueueCir(queue, blocked_process);
             }
             return true;
@@ -495,7 +513,8 @@ bool findProcessByPid(pid_t pid)
 
         // Free the memory
         free(toRemove);
-        if(blocked_process){
+        if(blocked_process && canAllocate == true){
+            printMemLog(fp3,getClk(),blocked_process,"allocated");
             enqueueCir(queue, blocked_process);
         }
         return true;
@@ -642,7 +661,7 @@ int main(int argc, char *argv[])
     readyQNotEmpty(algo);
 
     schedulerPrefPrint(fp2); // print final results in pref file
-    printf("done");
+    printf("\ndone\n\n");
     fclose(fp);
     fclose(fp2);
     fclose(fp3);
