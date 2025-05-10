@@ -52,7 +52,6 @@ bool readyQNotEmpty(int algo)
 }
 
 void schedulerlogPrint(FILE *fip, int currentTime, pcb *pcb, char status[])
-// AHMED ABD-ELjALeel!!!!!!!! please use this and don't waste your time and copy the arguments from the use of the function in roundRobin so you don't waste time filling the arguments
 {
     if (fip == NULL)
     {
@@ -345,7 +344,6 @@ void roundRobin(int quantum, FILE *fp) // assuming I am going to get a array of 
             RR_insert(queue, pcbtempRR);
             kill(pcbtempRR->systemid, SIGCONT); // run the process
 
-            // the function that will be traded for shawarma
             // free(pcbtempRR);
         }
     }
