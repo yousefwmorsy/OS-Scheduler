@@ -404,10 +404,6 @@ bool findProcessByPid(pid_t pid)
         printf("Process with PID %d removed from the queue\n", pid);
         prev->next = current->next;
         free(current);
-        if(blocked_process && canAllocate == true){
-            printMemLog(fp3,getClk(),blocked_process,"allocated");
-            PCBPriQ_enqueue(PriQ, blocked_process);
-        }
         return true;
         break;
 
