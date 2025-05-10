@@ -505,7 +505,7 @@ void PCBPriQ_printGivenIDs(PCBPriQ *queue)
     printf("PCBPriQ: ");
     while (current != NULL)
     {
-        printf("P%d(%c)", current->PCB.givenid, current->PCB.status == RUNNING ? 'R' : 'W');
+        printf("P%d(%c, %d)", current->PCB.givenid, current->PCB.status == RUNNING ? 'R' : 'W', current->PCB.systemid);
         if (current->next != NULL)
         {
             printf(" -> ");

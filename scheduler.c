@@ -351,21 +351,9 @@ void roundRobin(int quantum, FILE *fp) // assuming I am going to get a array of 
 
 bool findProcessByPid(pid_t pid)
 {
-    bool canAllocate = false ;
-    pcb * blocked_process = NULL;
     free_memory(memory, pid); // Free memory
     someonefinished = true;
-    blocked_process = blockedQueue_peek(BP);
-    if(blocked_process){ // Try to allocate the memory
-        if(!allocate_memory(blocked_process, memory, 'H')){
-            printf("failed to allocate in findProcessByPid");
-        } else {
-        pcb temp = blockedQueue_dequeue(BP);
-        memcpy(blocked_process, &temp, sizeof(pcb)); // Dequeue if you can
-        printf("Blocked process comes entered the ready Queue\n");
-        canAllocate = true;
-    }
-    }
+
     printf("------------------------------ \n");
     switch (algo)
     {
@@ -375,7 +363,7 @@ bool findProcessByPid(pid_t pid)
         // Dequeue the process from the priority queue
         if (head == NULL)
             return false;
-
+        PCBPriQ_printGivenIDs(PriQ);
         PCBNode *current = head;
         PCBNode *prev = NULL;
         pcb temp;
@@ -428,10 +416,6 @@ bool findProcessByPid(pid_t pid)
                 // Clear the last pointer and decrement size
                 SRTN_Queue->Process[SRTN_Queue->size - 1] = NULL;
                 SRTN_Queue->size--;
-                if(blocked_process && canAllocate == true){
-                    printMemLog(fp3,getClk(),blocked_process,"allocated");
-                    SRTN_PriQueue_insert(SRTN_Queue, blocked_process);
-                }
                 return true;
             }
             
@@ -446,9 +430,6 @@ bool findProcessByPid(pid_t pid)
             schedulerlogPrint(fp, getClk(), pcbtempRR, "finished");
             printMemLog(fp3,getClk(),pcbtempRR,"freed");
             free(pcbtempRR);
-            if(blocked_process && canAllocate == true){
-                enqueueCir(queue, blocked_process);
-            }
             return true;
         }
         if (isEmptyCir(queue))
@@ -509,10 +490,6 @@ bool findProcessByPid(pid_t pid)
 
         // Free the memory
         free(toRemove);
-        if(blocked_process && canAllocate == true){
-            printMemLog(fp3,getClk(),blocked_process,"allocated");
-            enqueueCir(queue, blocked_process);
-        }
         return true;
         break;
     }
