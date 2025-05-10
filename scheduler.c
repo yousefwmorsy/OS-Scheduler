@@ -67,6 +67,7 @@ void schedulerlogPrint(FILE *fip, int currentTime, pcb *pcb, char status[])
     {
         WT += waitingTime;
         TotalTime += totalTime;
+        printf("Total Time = %d, Running Time = %d\n", totalTime, TotalTime);
     }
 
     if (strcmp(status, "finished") == 0)
@@ -500,41 +501,35 @@ void checkforBlockPro(int algo) {
     someonefinished = false;
     pcb *blockedProcess = NULL;
 
-    while ((blockedProcess = blockedQueue_peek(BP)) != NULL)
-    {
-        if (!allocate_memory(blockedProcess, memory, 'H'))
-        {
+    while ((blockedProcess = blockedQueue_peek(BP)) != NULL) {
+        if (!allocate_memory(blockedProcess, memory, 'H')) {
             printf("Failed to allocate memory for blocked process (ID: %d, SystemID: %d)\n", blockedProcess->givenid, blockedProcess->systemid);
             break; // Exit the loop if memory allocation fails
-        }
-        else
-        {
+        } else {
             pcb dequeuedProcess = blockedQueue_dequeue(BP);
-            memcpy(blockedProcess, &dequeuedProcess, sizeof(pcb));
+
+
+            memcpy((void *)blockedProcess, &dequeuedProcess, sizeof(pcb));
             printf("Blocked process entered the ready queue (ID: %d, SystemID: %d)\n", blockedProcess->givenid, blockedProcess->systemid);
 
             printMemLog(fp3, getClk(), blockedProcess, "allocated");
+            switch (algo){
+                case HPF:
+                        printf("Blocked process entered the ready queue (ID: %d, SystemID: %d)\n", blockedProcess->givenid, blockedProcess->systemid);
+                    PCBPriQ_enqueue(PriQ, blockedProcess);
+                    break;
 
-            switch (algo)
-            {
-            case HPF:
-             printf("Blocked process entered the ready queue (ID: %d, SystemID: %d)\n", blockedProcess->givenid, blockedProcess->systemid);
+                case SRTN:
+                    SRTN_PriQueue_insert(SRTN_Queue, blockedProcess);
+                    break;
 
-                PCBPriQ_enqueue(PriQ, blockedProcess);
-                break;
-
-            case SRTN:
-                SRTN_PriQueue_insert(SRTN_Queue, blockedProcess);
-                break;
-
-            case RR:
-                enqueueCir(queue, blockedProcess);
-                break;
+                case RR:
+                    enqueueCir(queue, blockedProcess);
+                    break;
         }
     }
 
-    if (blockedProcess == NULL)
-    {
+    if (blockedProcess == NULL) {
         printf("No more blocked processes to handle\n");
     }
 }

@@ -104,20 +104,18 @@ enum pstatus
     WAITING = 1
 };
 
-typedef struct
-{
-    // processNode* process;
-    enum pstatus status;
+typedef struct pcb {
+    const int systemid; // PID (constant and immutable)
     int givenid;
-    pid_t systemid;
     int arrivalTime;
-    int executionTime;
+    const int executionTime; // Make executionTime constant to ensure it cannot be modified after initialization
     int remainingTime;
     int waitingTime;
     int priority;
     int memsize;
     int memStart;
     int memEnd;
+    enum pstatus status; // Added status field to track process state
 } pcb;
 
 /*
@@ -280,98 +278,99 @@ void ClearQueue(AllProcessesQueue *q)
     //     return pcbobj;
     // };
     
-    pcb pcb_init(ProcessMsg *processmsg, int sysid)
-    {
-        pcb pcbobj;
-        pcbobj.givenid = processmsg->id;
-        pcbobj.systemid = sysid; // Set to the forked process ID
-        pcbobj.status = WAITING;
-        pcbobj.arrivalTime = processmsg->arrivalTime;
-        pcbobj.executionTime = processmsg->runTime;
-        pcbobj.remainingTime = processmsg->runTime;
-        pcbobj.waitingTime = 0;
-        pcbobj.priority = processmsg->priority;
-        pcbobj.memsize = processmsg->memsize;
-        pcbobj.memStart=0;
-        pcbobj.memEnd = 0;
-        return pcbobj;
+pcb pcb_init(ProcessMsg *processmsg, int sysid) {
+    pcb pcbobj = {
+        .systemid = sysid, // Initialize the constant PID during creation
+        .givenid = processmsg->id,
+        .arrivalTime = processmsg->arrivalTime,
+        .executionTime = processmsg->runTime, // Set once and never modified
+        .remainingTime = processmsg->runTime,
+        .waitingTime = 0,
+        .priority = processmsg->priority,
+        .memsize = processmsg->memsize,
+        .memStart = -1,
+        .memEnd = -1,
+        .status = WAITING // Initialize status to WAITING
     };
-    // note it need a lot of improvments I know it is not right I am making the first version of the code and I will improve it later
-    //  Define the maximum size of the queue
-    #define CirQ_SIZE 1000
-    
-    typedef struct
+    return pcbobj;
+}
+
+// note it need a lot of improvments I know it is not right I am making the first version of the code and I will improve it later
+//  Define the maximum size of the queue
+#define CirQ_SIZE 1000
+
+typedef struct
+{
+    pcb *queue[CirQ_SIZE];
+    int front;
+    int rear;
+} CircularQueue;
+
+// Function to check if the queue is full
+int isFullCir(CircularQueue *q)
+{
+    // If the next position is the front, the queue is full
+    return (q->rear + 1) % CirQ_SIZE == q->front;
+}
+
+// Function to check if the queue is empty
+int isEmptyCir(CircularQueue *q)
+{
+    // If the front hasn't been set, the queue is empty
+    return q->front == -1;
+}
+int nextIndex(int i)
+{
+    return (i + 1) % CirQ_SIZE;
+}
+// Function to enqueue (insert) an element
+void enqueueCir(CircularQueue *q, pcb *data)
+{
+    // If the queue is full, print an error message and
+    // return
+    if (isFullCir(q))
     {
-        pcb *queue[CirQ_SIZE];
-        int front;
-        int rear;
-    } CircularQueue;
-    
-    // Function to check if the queue is full
-    int isFullCir(CircularQueue *q)
-    {
-        // If the next position is the front, the queue is full
-        return (q->rear + 1) % CirQ_SIZE == q->front;
+        printf("Queue overflow\n");
+        return;
     }
-    
-    // Function to check if the queue is empty
-    int isEmptyCir(CircularQueue *q)
+    // If the queue is empty, set the front to the first
+    // position
+    if (q->front == -1)
     {
-        // If the front hasn't been set, the queue is empty
-        return q->front == -1;
+        q->front = 0;
     }
-    int nextIndex(int i)
+    // Add the data to the queue and move the rear pointer
+    q->rear = (q->rear + 1) % CirQ_SIZE;
+    q->queue[q->rear] = data;
+    // printf("Element %d inserted\n", data.process->processID);
+}
+
+// Function to dequeue (remove) an element
+pcb *dequeueCir(CircularQueue *q)
+{
+    // If the queue is empty, print an error message and
+    // return -1
+    if (isEmptyCir(q))
     {
-        return (i + 1) % CirQ_SIZE;
+        // printf("Queue underflow\n"); //for now leave it like this
+        return NULL;
     }
-    // Function to enqueue (insert) an element
-    void enqueueCir(CircularQueue *q, pcb *data)
+    // Get the data from the front of the queue
+    pcb *data = q->queue[q->front];
+    // If the front and rear pointers are at the same
+    // position, reset them
+    if (q->front == q->rear)
     {
-        // If the queue is full, print an error message and
-        // return
-        if (isFullCir(q))
-        {
-            printf("Queue overflow\n");
-            return;
-        }
-        // If the queue is empty, set the front to the first
-        // position
-        if (q->front == -1)
-        {
-            q->front = 0;
-        }
-        // Add the data to the queue and move the rear pointer
-        q->rear = (q->rear + 1) % CirQ_SIZE;
-        q->queue[q->rear] = data;
-        // printf("Element %d inserted\n", data.process->processID);
+        q->front = q->rear = -1;
     }
-    
-    // Function to dequeue (remove) an element
-    pcb *dequeueCir(CircularQueue *q)
+    else
     {
-        // If the queue is empty, print an error message and
-        // return -1
-        if (isEmptyCir(q))
-        {
-            // printf("Queue underflow\n"); //for now leave it like this
-            return NULL;
-        }
-        // Get the data from the front of the queue
-        pcb *data = q->queue[q->front];
-        // If the front and rear pointers are at the same
-        // position, reset them
-        if (q->front == q->rear)
-        {
-            q->front = q->rear = -1;
-        }
-        else
-        {
-        // Otherwise, move the front pointer to the next
-        // position
-        q->front = (q->front + 1) % CirQ_SIZE;
+    // Otherwise, move the front pointer to the next
+    // position
+    q->front = (q->front + 1) % CirQ_SIZE;
     }
-    // Return the dequeued data
-    return data;
+// Return the dequeued data
+return data;
 }
 
 typedef struct PCBNode
@@ -407,9 +406,9 @@ void PCBPriQ_enqueue(PCBPriQ *queue, pcb *newPCB)
         printf("Memory allocation failed\n");
         exit(1);
     }
-    newNode->PCB = *newPCB;
+    memcpy(&newNode->PCB, newPCB, sizeof(pcb)); // Use memcpy to copy the structure
     newNode->next = NULL;
-    
+    printf("Enqueued process ID=(%d, %d) into priority queue\n", newNode->PCB.systemid, newPCB->systemid);
     // If the queue is empty, just add the new PCB
     if (queue->head == NULL)
     {
@@ -629,7 +628,7 @@ void blockedQueue_enqueue(Blocked_Processes *BP, pcb* process){
         printf("Memory allocation failed\n");
         exit(1);
     }
-    newNode->PCB = *process;
+    memcpy(&newNode->PCB, process, sizeof(pcb)); // Use memcpy to copy the structure
     newNode->next = NULL;
     
     // If the queue is empty, just add the new PCB
@@ -653,7 +652,8 @@ pcb blockedQueue_dequeue(Blocked_Processes* BP){
         exit(1);
     }
     PCBNode *temp = BP->head;
-    pcb process = temp->PCB;
+    pcb process;
+    memcpy(&process, &temp->PCB, sizeof(pcb));
     BP->head = BP->head->next;
     free(temp);
     return process;
