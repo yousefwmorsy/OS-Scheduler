@@ -202,11 +202,6 @@ void checkforNewProcesses(int msg_q, int algo)
             }
         }
     }
-    if (pcbtempRR != NULL && outsideOfQ == true )
-    {
-        RR_insert(queue,pcbtempRR);
-        outsideOfQ = false;
-    }
     workingOnHandler = false;
 }
 
@@ -290,6 +285,11 @@ void HPF_Iter(FILE *fp, FILE *fp2)
 
 void roundRobin(int quantum, FILE *fp) // assuming I am going to get a array of processes this assumption might not be true
 {
+    if (pcbtempRR != NULL && outsideOfQ == true )
+    {
+        RR_insert(queue,pcbtempRR);
+        outsideOfQ = false;
+    }
     pcbtempRR = NULL;
 
     // printf("Round Robin started\n"); //remove it later
