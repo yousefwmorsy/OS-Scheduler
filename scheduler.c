@@ -23,6 +23,7 @@ Memory_Block *memory;
 Blocked_Processes *BP;
 FILE *fp3;
 bool outsideOfQ = false ;
+bool someonefinished = false;
 
 bool readyQNotEmpty(int algo)
 {
@@ -355,6 +356,7 @@ bool findProcessByPid(pid_t pid)
     bool canAllocate = false ;
     pcb * blocked_process = NULL;
     free_memory(memory, pid); // Free memory
+    someonefinished = true;
     blocked_process = blockedQueue_peek(BP);
     if(blocked_process){ // Try to allocate the memory
         if(!allocate_memory(blocked_process, memory, 'H')){
@@ -522,6 +524,51 @@ bool findProcessByPid(pid_t pid)
     }
 }
 
+void checkforBlockPro(int algo)
+{
+    someonefinished = false ;
+    pcb * Blocked_Processes = NULL;
+    while(1){
+    Blocked_Processes = blockedQueue_peek(BP);
+    if (Blocked_Processes)
+    {
+        if (!allocate_memory(Blocked_Processes,memory,'H'))
+        {
+            printf("Failed to allocate in checkforBlockPro\n");
+        }else{
+            pcb temp = blockedQueue_dequeue(BP);
+        memcpy(Blocked_Processes, &temp, sizeof(pcb)); // Dequeue if you can
+        printf("Blocked process comes entered the ready Queue\n");
+        switch (algo)
+        {
+        case HPF:
+            if (Blocked_Processes)
+            {
+                 printMemLog(fp3,getClk(),Blocked_Processes,"allocated");
+                PCBPriQ_enqueue(PriQ, Blocked_Processes);
+            }
+            break;
+        
+       case SRTN:
+       if(Blocked_Processes ){
+                    printMemLog(fp3,getClk(),Blocked_Processes,"allocated");
+                    SRTN_PriQueue_insert(SRTN_Queue, Blocked_Processes);
+                }
+            break;
+        case RR :
+        if(Blocked_Processes ){
+            printMemLog(fp3,getClk(),Blocked_Processes,"allocated");
+            enqueueCir(queue, Blocked_Processes);
+        }
+        break;
+        }       
+        }
+        
+    }else {return ;}
+}
+    
+}
+
 void recieveMess(int signum)
 {
     printf("Received signal to check for new processes\n");
@@ -639,6 +686,8 @@ int main(int argc, char *argv[])
             checkforNewProcesses(MessageQueueId, algo);
             newentry--;
         }
+        if(someonefinished)
+        checkforBlockPro(algo);
 
         // Only run algorithm iterations when the clock ticks
         // run the algorithms (one iteration)
