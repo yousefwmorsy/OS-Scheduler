@@ -34,7 +34,7 @@ bool readyQNotEmpty(int algo)
         return (PCBPriQ_isEmpty(PriQ) == 0);
         break;
     case SRTN:
-    printf("aaaaaaaaaaaaaaaaaaaaaaaa %d\n\n",SRTN_Queue->size);
+    //printf("aaaaaaaaaaaaaaaaaaaaaaaa %d\n\n",SRTN_Queue->size);
         return (SRTN_Queue->size != 0);
         break;
     case RR:
@@ -174,7 +174,6 @@ void checkforNewProcesses(int msg_q, int algo)
                 return;
             }
             pcb tempPcb = pcb_init(&msg, pid);
-            printf("wth happened %d\n",tempPcb.systemid);
 
             memcpy(obj, &tempPcb, sizeof(pcb));
             if(!allocate_memory(obj, memory, 'H')){
@@ -514,46 +513,25 @@ bool findProcessByPid(pid_t pid)
 
 void checkforBlockPro(int algo) {
     someonefinished = false;
-    pcb *blockedProcess = NULL;
-
-    while ((blockedProcess = blockedQueue_peek(BP)) != NULL)
+    // Process all blocked processes until memory full
+    while (blockedQueue_peek(BP) && allocate_memory(blockedQueue_peek(BP), memory, 'H') )
     {
-        if (!allocate_memory(blockedProcess, memory, 'H'))
+        pcb * blockedProcess = blockedQueue_dequeue(BP);
+        printf("Blocked process entered the ready queue (ID: %d, SystemID: %d)\n", blockedProcess->givenid, blockedProcess->systemid);
+        printMemLog(fp3, getClk(), blockedProcess, "allocated");
+        switch (algo)
         {
-            printf("Failed to allocate memory for blocked process (ID: %d, SystemID: %d)\n", blockedProcess->givenid, blockedProcess->systemid);
-            break; // Exit the loop if memory allocation fails
-        }
-        else
-        {
-            pcb dequeuedProcess = blockedQueue_dequeue(BP);
-            memcpy(blockedProcess, &dequeuedProcess, sizeof(pcb));
-            printf("Blocked process entered the ready queue (ID: %d, SystemID: %d)\n", blockedProcess->givenid, blockedProcess->systemid);
-
-            printMemLog(fp3, getClk(), blockedProcess, "allocated");
-
-            switch (algo)
-            {
             case HPF:
-             printf("Blocked process entered the ready queue (ID: %d, SystemID: %d)\n", blockedProcess->givenid, blockedProcess->systemid);
-
                 PCBPriQ_enqueue(PriQ, blockedProcess);
                 break;
-
             case SRTN:
                 SRTN_PriQueue_insert(SRTN_Queue, blockedProcess);
                 break;
-
             case RR:
                 enqueueCir(queue, blockedProcess);
                 break;
         }
     }
-
-    if (blockedProcess == NULL)
-    {
-        printf("No more blocked processes to handle\n");
-    }
-}
 }
 
 void recieveMess(int signum)
@@ -686,6 +664,7 @@ int main(int argc, char *argv[])
         switch (algo)
         {
         case HPF:
+            PCBPriQ_printGivenIDs(PriQ);
             HPF_Iter(fp, fp2);
             break;
         case SRTN:

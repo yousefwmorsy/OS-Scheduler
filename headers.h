@@ -657,14 +657,14 @@ void blockedQueue_enqueue(Blocked_Processes *BP, pcb* process){
     newNode->next = NULL;
 }
 
-pcb blockedQueue_dequeue(Blocked_Processes* BP){
+pcb* blockedQueue_dequeue(Blocked_Processes* BP){
     if (BP->head == NULL){
-        fprintf(stderr, "Queue underflow\n");
-        exit(1);
+        return NULL;
     }
     PCBNode *temp = BP->head;
-    pcb process = temp->PCB;
-    BP->head = BP->head->next;
+    pcb *process = malloc(sizeof(pcb));
+    *process = temp->PCB;
+    BP->head = temp->next;
     free(temp);
     return process;
 }
@@ -689,9 +689,11 @@ int blockedQueue_isEmpty(Blocked_Processes *queue)
 // Clear the  queue
 void blockedQueue_clear(Blocked_Processes *queue)
 {
-    while (!blockedQueue_isEmpty(queue))
+    pcb *p;
+    while (blockedQueue_peek(queue) != NULL)
     {
-        blockedQueue_dequeue(queue);
+        p = blockedQueue_dequeue(queue);
+        free(p);
     }
     free(queue);
 }
