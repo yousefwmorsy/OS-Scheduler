@@ -374,6 +374,16 @@ void ClearQueue(AllProcessesQueue *q)
     return data;
 }
 
+pcb *peekCir(CircularQueue *q)
+{
+    if (isEmptyCir(q))
+    {
+        return NULL;
+    }
+    pcb *data = q->queue[q->front];    
+    return data;
+}
+
 typedef struct PCBNode
 {
     pcb PCB;
