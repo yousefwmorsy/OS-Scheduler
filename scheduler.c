@@ -34,6 +34,7 @@ bool readyQNotEmpty(int algo)
         return (PCBPriQ_isEmpty(PriQ) == 0);
         break;
     case SRTN:
+    printf("aaaaaaaaaaaaaaaaaaaaaaaa %d\n\n",SRTN_Queue->size);
         return (SRTN_Queue->size != 0);
         break;
     case RR:
@@ -359,7 +360,9 @@ bool findProcessByPid(pid_t pid)
     switch (algo)
     {
     case HPF:
-    PCBPriQ_dequeue(PriQ);
+    pcb current  = PCBPriQ_dequeue(PriQ);
+    schedulerlogPrint(fp, getClk(), &current, "finished");
+        printMemLog(fp3,getClk(),&current,"freed");
         // PCBNode *head = PriQ->head;
         // printf("deletinggggggggggggg \n");
         // // Dequeue the process from the priority queue
