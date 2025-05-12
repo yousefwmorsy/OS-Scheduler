@@ -359,69 +359,76 @@ bool findProcessByPid(pid_t pid)
     switch (algo)
     {
     case HPF:
-        PCBNode *head = PriQ->head;
-        printf("deletinggggggggggggg \n");
-        // Dequeue the process from the priority queue
-        if (head == NULL)
-            return false;
-        PCBPriQ_printGivenIDs(PriQ);
-        PCBNode *current = head;
-        PCBNode *prev = NULL;
-        pcb temp;
-        // If the node to remove is the head
-        if (current->PCB.systemid == pid)
-        {
-            PriQ->head = current->next;
-            schedulerlogPrint(fp, getClk(), &current->PCB, "finished");
-            printMemLog(fp3,getClk(),&current->PCB,"freed");
-            free(current);
-            return true;
-        }
+    PCBPriQ_dequeue(PriQ);
+        // PCBNode *head = PriQ->head;
+        // printf("deletinggggggggggggg \n");
+        // // Dequeue the process from the priority queue
+        // if (head == NULL)
+        //     return false;
+        // PCBPriQ_printGivenIDs(PriQ);
+        // PCBNode *current = head;
+        // PCBNode *prev = NULL;
+        // pcb temp;
+        // // If the node to remove is the head
+        // if (current->PCB.systemid == pid)
+        // {
+        //     PriQ->head = current->next;
+        //     schedulerlogPrint(fp, getClk(), &current->PCB, "finished");
+        //     printMemLog(fp3,getClk(),&current->PCB,"freed");
+        //     free(current);
+        //     return true;
+        // }
 
-        // Traverse the list to find the node
-        while (current != NULL && current->PCB.systemid != pid)
-        {
-            prev = current;
-            current = current->next;
-        }
+        // // Traverse the list to find the node
+        // while (current != NULL && current->PCB.systemid != pid)
+        // {
+        //     prev = current;
+        //     current = current->next;
+        // }
 
-        // If the node was not found
-        if (current == NULL)
-            return false;
+        // // If the node was not found
+        // if (current == NULL)
+        //     return false;
 
-        // Remove the node
-        printf("Process with PID %d removed from the queue\n", pid);
-        prev->next = current->next;
-        free(current);
-        return true;
+        // // Remove the node
+        // printf("Process with PID %d removed from the queue\n", pid);
+        // prev->next = current->next;
+        // free(current);
+        // return true;
         break;
 
     case SRTN:
-        for (int i = 0; i < SRTN_Queue->size; i++)
-        {
-            if (SRTN_Queue->Process[i]->systemid == pid)
-            {
-                schedulerlogPrint(fp, getClk(), SRTN_Queue->Process[i], "finished");
-                printMemLog(fp3,getClk(),SRTN_Queue->Process[i],"freed");
-                printf("Process with PID %d done and finished\n", pid);
+        // for (int i = 0; i < SRTN_Queue->size; i++)
+        // {
+        //     if (SRTN_Queue->Process[i]->systemid == pid)
+        //     {
+        //         schedulerlogPrint(fp, getClk(), SRTN_Queue->Process[i], "finished");
+        //         printMemLog(fp3,getClk(),SRTN_Queue->Process[i],"freed");
+        //         printf("Process with PID %d done and finished\n", pid);
 
-                // Free the process
-                free(SRTN_Queue->Process[i]);
-                SRTN_Queue->Process[i] = NULL; // Clear the pointer
-                // Shift elements to the left
-                for (int j = i; j < SRTN_Queue->size - 1; j++)
-                {
-                    SRTN_Queue->Process[j] = SRTN_Queue->Process[j + 1];
-                }
-
-                // Clear the last pointer and decrement size
-                SRTN_Queue->Process[SRTN_Queue->size - 1] = NULL;
-                SRTN_Queue->size--;
-                return true;
-            }
+        //         // Free the process
+        //         if (SRTN_Queue->Process[i]!=NULL)
+        //         {
+        //             free(SRTN_Queue->Process[i]);
+        //         }
+                
+        //         SRTN_Queue->Process[i] = NULL; // Clear the pointer
+        //         // Shift elements to the left
+        //         for (int j = i; j < SRTN_Queue->size - 1; j++)
+        //         {
+        //             printf("\n\nthe J is :%d\n\n",j);
+        //             SRTN_Queue->Process[j] = SRTN_Queue->Process[j + 1];
+        //         }
+        //         printf("\nout of the second loop\n");
+        //         // Clear the last pointer and decrement size
+        //         SRTN_Queue->Process[SRTN_Queue->size - 1] = NULL;
+        //         SRTN_Queue->size--;
+        //         return true;
+        //     }
             
-        }
-        return false; // ID not found
+        // }
+        // return false; // ID not found
+        SRTN_PriQueue_pop(SRTN_Queue);
         break;
     case RR:
 
@@ -488,7 +495,7 @@ bool findProcessByPid(pid_t pid)
         {
             queue->rear = (queue->rear - 1 + CirQ_SIZE) % CirQ_SIZE;
         }
-
+        printf("I am the imposter\n");
         // Free the memory
         free(toRemove);
         return true;
@@ -571,7 +578,7 @@ void signalHandler(int signum)
 
         // Handle the termination of the process
         // For example, remove it from the appropriate queue or update its status
-        
+        printf("\nbefore findProByID\n\n");
         if (findProcessByPid(terminatedPid))
         {
             printf("Process with PID %d removed from the queue\n", terminatedPid);
@@ -580,6 +587,8 @@ void signalHandler(int signum)
         {
             printf("Process with PID %d not found in the queue\n", terminatedPid);
         } // Implement this function to locate the process in your data structures
+        printf("\aafter findProByID\n\n");
+
     }
     else if (terminatedPid == 0)
     {
@@ -593,11 +602,12 @@ void signalHandler(int signum)
 
 int main(int argc, char *argv[])
 {
+
+    printf("Scheduler starting\n");
     WTAs = malloc(sizeof(float) * maxProcess);
     initClk();
     // TODO implement the scheduler :)
     // upon termination release the clock resources.
-    printf("Scheduler starting\n");
     signal(SIGUSR2, recieveMess);   // Register handler for SIGUSR1 signal
     signal(SIGUSR1, signalHandler); // Register handler for SIGCHLD signal
 

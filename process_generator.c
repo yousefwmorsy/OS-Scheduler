@@ -105,6 +105,7 @@ int main(int argc, char *argv[])
         execl("./Compiled/scheduler.out", "./Compiled/scheduler.out", algo_str, quantum_str, NULL);
         perror("scheduler execl failed\n");
     }
+    printf("after scheduler fork\n");
     // 4. Use this function after creating the clock process to initialize clock
     initClk();
 
