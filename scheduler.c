@@ -87,7 +87,8 @@ void schedulerlogPrint(FILE *fip, int currentTime, pcb *pcb, char status[])
 }
 
 void printMemLog(FILE *fp,int currentTime ,pcb *pcb,char status []){
-fprintf(fp,"At time %d %s %d bytes for process %d from %d to %d\n",currentTime ,status ,pcb->memsize,pcb->givenid,pcb->memStart,pcb->memEnd);
+    if(status == "allocated") fprintf(fp,"At time %d %s %d bytes for process %d from %d to %d\n",currentTime ,status ,pcb->memsize,pcb->givenid,pcb->memStart,pcb->memEnd);
+    if(status == "freed") fprintf(fp,"At time %d %s %d bytes from process %d from %d to %d\n",currentTime ,status ,pcb->memsize,pcb->givenid,pcb->memStart,pcb->memEnd);
 }
 
 void schedulerPrefPrint(FILE *fp)
@@ -472,9 +473,9 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    fp = fopen("schedulerlog.txt", "w");
+    fp = fopen("Scheduler.log", "w");
     fprintf(fp, "#At time  x process y state arr w total z remain y wait k\n");
-    FILE *fp2 = fopen("schedulerPref.txt", "w");
+    FILE *fp2 = fopen("Scheduler.pref", "w");
     fp3 = fopen("memory.log","w");
     fprintf(fp3,"#At time x allocated y bytes for process z from i to j\n");
 
