@@ -182,7 +182,8 @@ Memory_Block* allocate_memory(pcb *newProcess, Memory_Block *head, char place){
 
 void free_memory(Memory_Block* head, int pid){
     if(!head) return;
-    
+    printf("Free memory called, head->start: %d, head->end: %d, pid: %d\n", head->start, head->start + head->size, pid);
+    if(head->process) printf("head->process->systemid: %d\n", head->process->systemid);
     if(head->process && head->process->systemid == pid){
         head->is_free = true;
         head->is_used = false;
@@ -200,6 +201,24 @@ void free_memory(Memory_Block* head, int pid){
         head->is_free = true;
         head->is_used = false;
     }
+}
+
+// Recursively traverse memory tree and print all blocks with status
+void printMemoryTree(Memory_Block* node) {
+    if (!node) return;
+    // Print current block
+    int end = node->start + node->size - 1;
+    printf("Block [%d - %d], size=%d, free=%s, used=%s",
+           node->start, end, node->size,
+           node->is_free ? "true" : "false",
+           node->is_used ? "true" : "false");
+    if (node->process) {
+        printf(", pid=%d, sys=%d", node->process->givenid, node->process->systemid);
+    }
+    printf("\n");
+    // Recurse on children
+    printMemoryTree(node->left);
+    printMemoryTree(node->right);
 }
 
 processNode *create_process(int id, int arrival, int runtime, int priority, int memoSize)
@@ -677,7 +696,9 @@ pcb *blockedQueue_peek(Blocked_Processes *queue)
         printf("The Head is NULL in Blocked Queue\n");
         return NULL; // Queue is empty
     }
-    return &queue->head->PCB;
+    pcb *process = malloc(sizeof(pcb));
+    *process = queue->head->PCB;
+    return process;
 }
 
 // Check if the queue is empty

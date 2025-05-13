@@ -352,6 +352,7 @@ void roundRobin(int quantum, FILE *fp) // assuming I am going to get a array of 
 
 bool findProcessByPid(pid_t pid)
 {
+    printf("Finding process with PID %d\n", pid);
     free_memory(memory, pid); // Free memory
     someonefinished = true;
 
@@ -431,7 +432,7 @@ bool findProcessByPid(pid_t pid)
         // }
         // return false; // ID not found
         pcb *aaaaaa = SRTN_PriQueue_pop(SRTN_Queue); //aaaaaaa
-          schedulerlogPrint(fp, getClk(), aaaaaa, "finished");
+        schedulerlogPrint(fp, getClk(), aaaaaa, "finished");
         printMemLog(fp3,getClk(),aaaaaa,"freed");
         break;
     case RR:
@@ -514,11 +515,13 @@ bool findProcessByPid(pid_t pid)
 void checkforBlockPro(int algo) {
     someonefinished = false;
     // Process all blocked processes until memory full
+    printMemoryTree(memory);
     while (blockedQueue_peek(BP) && allocate_memory(blockedQueue_peek(BP), memory, 'H') )
     {
         pcb * blockedProcess = blockedQueue_dequeue(BP);
         printf("Blocked process entered the ready queue (ID: %d, SystemID: %d)\n", blockedProcess->givenid, blockedProcess->systemid);
         printMemLog(fp3, getClk(), blockedProcess, "allocated");
+        printMemoryTree(memory);
         switch (algo)
         {
             case HPF:
