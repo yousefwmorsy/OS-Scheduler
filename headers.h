@@ -180,27 +180,28 @@ Memory_Block* allocate_memory(pcb *newProcess, Memory_Block *head, char place){
     return NULL;
 }
 
-void free_memory(Memory_Block* head, int pid){
-    if(!head) return;
+bool free_memory(Memory_Block* head, int pid){
+    if(!head) return false;
     printf("Free memory called, head->start: %d, head->end: %d, pid: %d\n", head->start, head->start + head->size, pid);
     if(head->process) printf("head->process->systemid: %d\n", head->process->systemid);
     if(head->process && head->process->systemid == pid){
         head->is_free = true;
         head->is_used = false;
-        return;
+        return true;
     }
 
-    free_memory(head->left, pid);
-    free_memory(head->right, pid);
-
-    if(head->left && head->right && head->left->is_free && head->right->is_free){
-        free(head->left);
-        free(head->right);
-        head->left = NULL;
-        head->right = NULL;
-        head->is_free = true;
-        head->is_used = false;
+    if(free_memory(head->left, pid) || free_memory(head->right, pid)) {
+        if(head->left && head->right && head->left->is_free && head->right->is_free){
+            free(head->left);
+            free(head->right);
+            head->left = NULL;
+            head->right = NULL;
+            head->is_free = true;
+            head->is_used = false;
+        }
+        return true;
     }
+    return false;
 }
 
 // Recursively traverse memory tree and print all blocks with status
