@@ -1,4 +1,4 @@
 CPU utilization = 98.39%
-Avg WTA = 3.79
+Avg WTA = 3.78
 Avg Waiting = 3.30
-Std WTA = 3.48
+Std WTA = 3.47

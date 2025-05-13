@@ -23,18 +23,16 @@ Memory_Block *memory;
 Blocked_Processes *BP;
 FILE *fp3;
 bool outsideOfQ = false ;
-bool someonefinished = false;
+bool someone_finished = false;
 
 bool readyQNotEmpty(int algo)
 {
     switch (algo)
     {
     case HPF:
-        // printf("Q Empty %d", PCBPriQ_isEmpty(PriQ));
         return (PCBPriQ_isEmpty(PriQ) == 0);
         break;
     case SRTN:
-    //printf("aaaaaaaaaaaaaaaaaaaaaaaa %d\n\n",SRTN_Queue->size);
         return (SRTN_Queue->size != 0);
         break;
     case RR:
@@ -121,13 +119,10 @@ void schedulerPrefPrint(FILE *fp)
 bool checkifEnd(int msg_q)
 {
     ProcessMsg msg;
-    // printf("Checked if end\n");
     if (msgrcv(msg_q, &msg, sizeof(ProcessMsg) - sizeof(long), 2, IPC_NOWAIT) != -1)
     { // wait for msg of type 2
-        // printf("Returned true \n");
         return true;
     }
-    // printf("returned false \n");
     return false;
 }
 
@@ -135,7 +130,6 @@ void checkforNewProcesses(int msg_q, int algo)
 {
     workingOnHandler = true;
     ProcessMsg msg;
-    // printf("Checking for new processes...\n");
     bool entered = false;
     while (msgrcv(msg_q, &msg, sizeof(ProcessMsg) - sizeof(long), 1, IPC_NOWAIT) != -1)
     { // wait for msg of type 1 (process)
@@ -166,7 +160,6 @@ void checkforNewProcesses(int msg_q, int algo)
         {
             kill(getpid(), SIGSTOP); // stop the process immediately after forking
             printf("Forked process with PID=%d\n", pid);
-            // kill(pid, SIGSTOP);
             pcb *obj = malloc(sizeof(pcb));
             if (obj == NULL)
             {
@@ -255,14 +248,7 @@ void HPF_Iter(FILE *fp, FILE *fp2)
         return;
     }
 
-    if (head->remainingTime == 0)
-    {
-        // printf("Process %d Terminated at %d\n", head->givenid, getClk());
-        // kill(head->systemid, SIGCONT); // run for one last time to finish it
-        //  PCBPriQ_dequeue(PriQ);
-    }
-    else
-    {
+    if (head->remainingTime != 0){
         // Set waiting time when first executing the process
         if (head->remainingTime == head->executionTime)
         {
@@ -279,11 +265,10 @@ void HPF_Iter(FILE *fp, FILE *fp2)
         }
         kill(head->systemid, SIGCONT);
         head->remainingTime--;
-        // printf("Running Process %d at %d, remaining time: %d\n", head->givenid, getClk(), head->remainingTime);
     }
 }
 
-void roundRobin(int quantum, FILE *fp) // assuming I am going to get a array of processes this assumption might not be true
+void roundRobin(int quantum, FILE *fp)
 {
     if (pcbtempRR != NULL && outsideOfQ == true )
     {
@@ -292,18 +277,7 @@ void roundRobin(int quantum, FILE *fp) // assuming I am going to get a array of 
     }
     pcbtempRR = NULL;
 
-    // printf("Round Robin started\n"); //remove it later
     pcbtempRR = peekCir(queue);
-    // pcb *fortest = pcbtempRR;
-    // while (pcbtempRR != NULL && pcbtempRR->remainingTime <= 0)
-    // {
-    //     RR_insert(queue, pcbtempRR);   // Reinsert the process into the queue
-    //     pcbtempRR = dequeueCir(queue); // Dequeue the next process
-    //     if (pcbtempRR == fortest)
-    //     {
-    //         return;
-    //     }
-    // }
 
     if (pcbtempRR != NULL)
     {
@@ -312,7 +286,7 @@ void roundRobin(int quantum, FILE *fp) // assuming I am going to get a array of 
         if (pcbtempRR->waitingTime == 0 && pcbtempRR->executionTime == pcbtempRR->remainingTime) // I think that execution time is the time need for it to finish from the start not sure
         {
             pcbtempRR->waitingTime = currentTime - pcbtempRR->arrivalTime; // Waiting time of the process
-            // kill(pcbtempRR->systemid, SIGCONT);
+
             schedulerlogPrint(fp, currentTime, pcbtempRR, "started");
         }
 
@@ -332,9 +306,6 @@ void roundRobin(int quantum, FILE *fp) // assuming I am going to get a array of 
             kill(pcbtempRR->systemid, SIGCONT);
             schedulerlogPrint(fp, currentTime + quantum, pcbtempRR, "stopped");
             outsideOfQ = true;
-           // RR_insert(queue, pcbtempRR); // Reinsert the process into the queue
-
-            // pcbtempRR = NULL;            // Reset the pointer to avoid re-adding the same process
         }
         else if (pcbtempRR)
         {
@@ -344,8 +315,6 @@ void roundRobin(int quantum, FILE *fp) // assuming I am going to get a array of 
             }
             pcbtempRR->remainingTime = 0;
             kill(pcbtempRR->systemid, SIGCONT); // run the process
-
-            // free(pcbtempRR);
         }
     }
 }
@@ -354,171 +323,39 @@ bool findProcessByPid(pid_t pid)
 {
     printf("Finding process with PID %d\n", pid);
     free_memory(memory, pid); // Free memory
-    someonefinished = true;
-
+    someone_finished = true;
+    pcb *freed_process;
     printf("------------------------------ \n");
     switch (algo)
     {
     case HPF:
-    pcb current  = PCBPriQ_dequeue(PriQ);
-    schedulerlogPrint(fp, getClk(), &current, "finished");
+        pcb current  = PCBPriQ_dequeue(PriQ);
         printMemLog(fp3,getClk(),&current,"freed");
-        // PCBNode *head = PriQ->head;
-        // printf("deletinggggggggggggg \n");
-        // // Dequeue the process from the priority queue
-        // if (head == NULL)
-        //     return false;
-        // PCBPriQ_printGivenIDs(PriQ);
-        // PCBNode *current = head;
-        // PCBNode *prev = NULL;
-        // pcb temp;
-        // // If the node to remove is the head
-        // if (current->PCB.systemid == pid)
-        // {
-        //     PriQ->head = current->next;
-        //     schedulerlogPrint(fp, getClk(), &current->PCB, "finished");
-        //     printMemLog(fp3,getClk(),&current->PCB,"freed");
-        //     free(current);
-        //     return true;
-        // }
-
-        // // Traverse the list to find the node
-        // while (current != NULL && current->PCB.systemid != pid)
-        // {
-        //     prev = current;
-        //     current = current->next;
-        // }
-
-        // // If the node was not found
-        // if (current == NULL)
-        //     return false;
-
-        // // Remove the node
-        // printf("Process with PID %d removed from the queue\n", pid);
-        // prev->next = current->next;
-        // free(current);
-        // return true;
+        schedulerlogPrint(fp, getClk(), &current, "finished");
         break;
-
     case SRTN:
-        // for (int i = 0; i < SRTN_Queue->size; i++)
-        // {
-        //     if (SRTN_Queue->Process[i]->systemid == pid)
-        //     {
-        //         schedulerlogPrint(fp, getClk(), SRTN_Queue->Process[i], "finished");
-        //         printMemLog(fp3,getClk(),SRTN_Queue->Process[i],"freed");
-        //         printf("Process with PID %d done and finished\n", pid);
-
-        //         // Free the process
-        //         if (SRTN_Queue->Process[i]!=NULL)
-        //         {
-        //             free(SRTN_Queue->Process[i]);
-        //         }
-
-        //         SRTN_Queue->Process[i] = NULL; // Clear the pointer
-        //         // Shift elements to the left
-        //         for (int j = i; j < SRTN_Queue->size - 1; j++)
-        //         {
-        //             printf("\n\nthe J is :%d\n\n",j);
-        //             SRTN_Queue->Process[j] = SRTN_Queue->Process[j + 1];
-        //         }
-        //         printf("\nout of the second loop\n");
-        //         // Clear the last pointer and decrement size
-        //         SRTN_Queue->Process[SRTN_Queue->size - 1] = NULL;
-        //         SRTN_Queue->size--;
-        //         return true;
-        //     }
-
-        // }
-        // return false; // ID not found
-        pcb *aaaaaa = SRTN_PriQueue_pop(SRTN_Queue); //aaaaaaa
-        schedulerlogPrint(fp, getClk(), aaaaaa, "finished");
-        printMemLog(fp3,getClk(),aaaaaa,"freed");
+        freed_process = SRTN_PriQueue_pop(SRTN_Queue);
+        schedulerlogPrint(fp, getClk(), freed_process, "finished");
+        printMemLog(fp3,getClk(),freed_process,"freed");
+        free(freed_process);
         break;
     case RR:
-
-    pcb * tempaaaaa = dequeueCir(queue); // tempaaaaaaaaaa;
-     schedulerlogPrint(fp, getClk(), tempaaaaa, "finished");
-        printMemLog(fp3,getClk(),tempaaaaa,"freed");
-        // bool found = false;
-        // if (countfinished + 1 == countGlobal)
-        // {
-        //     schedulerlogPrint(fp, getClk(), pcbtempRR, "finished");
-        //     printMemLog(fp3,getClk(),pcbtempRR,"freed");
-        //     free(pcbtempRR);
-        //     return true;
-        // }
-        // if (isEmptyCir(queue))
-        // {
-        //     printf("Queue is empty, cannot find PID %d\n", pid);
-        //     return false;
-        // }
-
-        // int pos = -1;
-        // int i = queue->front;
-
-        // // Loop through the circular queue to find the PID
-        // do
-        // {
-        //     if (queue->queue[i] != NULL && queue->queue[i]->systemid == pid)
-        //     {
-        //         pos = i;
-        //         printf("Process with PID %d found in the RR queue\n", pid);
-        //         break;
-        //     }
-        //     i = (i + 1) % CirQ_SIZE;
-        // } while (i != (queue->rear + 1) % CirQ_SIZE); // inclusive loop
-
-        // if (pos == -1)
-        // {
-        //     return false; // PID not found
-        // }
-
-        // // Save the PCB to free it later
-        // pcb *toRemove = queue->queue[pos];
-        // schedulerlogPrint(fp, getClk(), toRemove, "finished");
-        // printMemLog(fp3,getClk(),toRemove,"freed");
-
-        // // Shift elements forward in circular fashion
-        // i = pos;
-        // while (i != queue->rear)
-        // {
-        //     int next = (i + 1) % CirQ_SIZE;
-        //     if (queue->queue[next] == NULL)
-        //     {
-        //         printf("error line 437\n");
-        //     }
-        //     queue->queue[i] = queue->queue[next];
-        //     i = next;
-        // }
-
-        // // Clear the last slot and update rear
-        // queue->queue[queue->rear] = NULL;
-        // if (queue->front == queue->rear)
-        // {
-        //     // Only one element was in the queue
-        //     queue->front = queue->rear = -1;
-        // }
-        // else
-        // {
-        //     queue->rear = (queue->rear - 1 + CirQ_SIZE) % CirQ_SIZE;
-        // }
-        // printf("I am the imposter\n");
-        // // Free the memory
-        // free(toRemove);
-        // return true;
-
+        freed_process = dequeueCir(queue);
+        schedulerlogPrint(fp, getClk(), freed_process, "finished");
+        printMemLog(fp3,getClk(),freed_process,"freed");
+        free(freed_process);
         break;
     }
 }
 
 void checkforBlockPro(int algo) {
-    someonefinished = false;
+    someone_finished = false;
     // Process all blocked processes until memory full
     printMemoryTree(memory);
-    while (blockedQueue_peek(BP) && allocate_memory(blockedQueue_peek(BP), memory, 'H') )
+    pcb * blockedProcess = NULL;
+    while (blockedQueue_peek(BP) && allocate_memory( blockedProcess = blockedQueue_peek(BP), memory, 'H') )
     {
-        pcb * blockedProcess = blockedQueue_dequeue(BP);
+        blockedQueue_dequeue(BP);
         printf("Blocked process entered the ready queue (ID: %d, SystemID: %d)\n", blockedProcess->givenid, blockedProcess->systemid);
         printMemLog(fp3, getClk(), blockedProcess, "allocated");
         printMemoryTree(memory);
@@ -540,7 +377,6 @@ void checkforBlockPro(int algo) {
 void recieveMess(int signum)
 {
     printf("Received signal to check for new processes\n");
-    // checkforNewProcesses(MessageQueueId, algo);
     newentry++;
     return;
 }
@@ -548,19 +384,12 @@ void recieveMess(int signum)
 void signalHandler(int signum)
 {
     printf("Received signal that a child terminated \n");
-
-    // todo: check which child terminated
     int status;
     int terminatedPid = 0;
     do
     {
         terminatedPid = waitpid(-1, &status, WNOHANG);
-        if (terminatedPid == 0)
-        {
-            // No child exited yet — sleep briefly to avoid CPU spinning
-            // usleep(100 * 100); // 10 ms
-        }
-    } while (terminatedPid == 0);
+    }while (terminatedPid == 0);
 
     if (terminatedPid > 0)
     {
@@ -577,7 +406,7 @@ void signalHandler(int signum)
         {
             printf("Process with PID %d not found in the queue\n", terminatedPid);
         } // Implement this function to locate the process in your data structures
-        printf("\aafter findProByID\n\n");
+        printf("\nafter findProByID\n\n");
 
     }
     else if (terminatedPid == 0)
@@ -596,8 +425,6 @@ int main(int argc, char *argv[])
     printf("Scheduler starting\n");
     WTAs = malloc(sizeof(float) * maxProcess);
     initClk();
-    // TODO implement the scheduler :)
-    // upon termination release the clock resources.
     signal(SIGUSR2, recieveMess);   // Register handler for SIGUSR1 signal
     signal(SIGUSR1, signalHandler); // Register handler for SIGCHLD signal
 
@@ -657,7 +484,7 @@ int main(int argc, char *argv[])
             checkforNewProcesses(MessageQueueId, algo);
             newentry--;
         }
-        if(someonefinished)
+        if(someone_finished)
         checkforBlockPro(algo);
 
         // Only run algorithm iterations when the clock ticks
@@ -672,7 +499,7 @@ int main(int argc, char *argv[])
             break;
         case SRTN:
             SRTN_func(fp, fp2);
-            usleep(1000); // Sleep for a short duration to avoid busy waiting
+            usleep(1000); // Sleep for a short duration to avoid busy waiting /*Ambiguous*/
             break;
         case RR:
             roundRobin(quantum, fp);

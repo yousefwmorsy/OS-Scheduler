@@ -9,7 +9,7 @@ void handler(int signum)
     if (remainingtime <= quantum)
     {
         kill(getppid(), SIGUSR1); // Send SIGUSR2 to the Scheduer
-        printf("Processssssssssss %d terminated at time %d\n", PID, getClk());
+        printf("Process %d terminated at time %d\n", PID, getClk());
         exit(0);
     }
     else
@@ -25,16 +25,13 @@ int main(int agrc, char *argv[])
     remainingtime = atoi(argv[1]); // get the remaining time from the command line arguments
     PID = atoi(argv[2]);           // get the PID from the command line arguments
     quantum = atoi(argv[3]);       // get the quantum from the command line arguments
-    printf("Process %d forked at %d and recieved %d remaining time \n", PID, getClk(), remainingtime);
+    printf("Process %d forked at %d and received %d remaining time \n", PID, getClk(), remainingtime);
     // TODO it needs to get the remaining time from somewhere
-    // remainingtime = ??;
     signal(SIGCONT, handler); // Register handler for SIGUSR1 signal
     kill(getppid(), SIGCONT); // Send SIGUSR1 to the Scheduer
     while (1)
     {
-        // printf("Waiting...\n");
         kill(getpid(), SIGTSTP); // remainingtime = ??;
-        // pause();
     }
 
     return 0;
