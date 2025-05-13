@@ -322,25 +322,31 @@ void roundRobin(int quantum, FILE *fp)
 bool findProcessByPid(pid_t pid)
 {
     printf("Finding process with PID %d\n", pid);
-    free_memory(memory, pid); // Free memory
-    someone_finished = true;
+    // free_memory(memory, pid); // Free memory
+    // someone_finished = true;
     pcb *freed_process;
     printf("------------------------------ \n");
     switch (algo)
     {
     case HPF:
         pcb current  = PCBPriQ_dequeue(PriQ);
+        free_memory(memory, pid, current.memsize); // Free memory
+        someone_finished = true;
         printMemLog(fp3,getClk(),&current,"freed");
         schedulerlogPrint(fp, getClk(), &current, "finished");
         break;
     case SRTN:
         freed_process = SRTN_PriQueue_pop(SRTN_Queue);
+        free_memory(memory, pid, freed_process->memsize); // Free memory
+        someone_finished = true;
         schedulerlogPrint(fp, getClk(), freed_process, "finished");
         printMemLog(fp3,getClk(),freed_process,"freed");
         free(freed_process);
         break;
     case RR:
         freed_process = dequeueCir(queue);
+        free_memory(memory, pid, freed_process->memsize); // Free memory
+        someone_finished = true;
         schedulerlogPrint(fp, getClk(), freed_process, "finished");
         printMemLog(fp3,getClk(),freed_process,"freed");
         free(freed_process);
