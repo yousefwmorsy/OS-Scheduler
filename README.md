@@ -47,7 +47,7 @@ This project simulates an operating system process scheduler that manages proces
 ## 💾 Memory Management
 
 The scheduler implements a **Buddy System** memory allocation algorithm:
-- Total memory: 1024 bytes
+- Total memory: 1024 bytes (configurable via `maxMemory` constant in `headers.h`)
 - Binary tree structure for memory blocks
 - Dynamic memory allocation and deallocation
 - Memory fragmentation handling
@@ -63,7 +63,7 @@ The scheduler implements a **Buddy System** memory allocation algorithm:
 ## 🔧 Installation
 
 ### Prerequisites
-- GCC compiler
+- GCC compiler (version 4.8 or higher recommended)
 - Linux/Unix environment (for IPC features)
 - Make utility
 
